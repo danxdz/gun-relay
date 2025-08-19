@@ -54,15 +54,16 @@ let config = {
   enableLogging: true,
   enableRateLimit: true,
   maintenanceMode: false,
-  // Privacy settings
+  // Privacy settings - simplified
   privacyMode: false,
-  anonymizeIPs: false,
-  disableStats: false,
-  ephemeralData: false
+  anonymizeIPs: false
 };
 
 // Logger
 function log(level, message, data = {}) {
+  // In privacy mode, don't log anything
+  if (config.privacyMode) return;
+  
   const entry = {
     timestamp: new Date().toISOString(),
     level,
@@ -78,6 +79,19 @@ function log(level, message, data = {}) {
   if (config.enableLogging) {
     console.log(`[${level}] ${message}`, data);
   }
+}
+
+// Helper to anonymize IPs if needed
+function getDisplayIP(ip) {
+  if (!ip || ip === 'unknown') return 'unknown';
+  if (!config.anonymizeIPs) return ip;
+  
+  // Anonymize: 192.168.1.1 -> 192.168.x.x
+  if (ip.includes('.')) {
+    const parts = ip.split('.');
+    return parts.slice(0, 2).join('.') + '.x.x';
+  }
+  return 'anonymized';
 }
 
 // Error tracking
@@ -792,7 +806,22 @@ app.get('/', (req, res) => {
                   <div class="toggle-slider"></div>
                 </div>
               </div>
+              
+              <h3 style="margin-top: 20px;">🔒 Privacy Settings</h3>
+              <div class="config-item">
+                <span>Privacy Mode (No Logging)</span>
+                <div class="toggle ${config.privacyMode ? 'active' : ''}" onclick="toggleConfig('privacyMode', this)">
+                  <div class="toggle-slider"></div>
+                </div>
+              </div>
+              <div class="config-item">
+                <span>Anonymize IP Addresses</span>
+                <div class="toggle ${config.anonymizeIPs ? 'active' : ''}" onclick="toggleConfig('anonymizeIPs', this)">
+                  <div class="toggle-slider"></div>
+                </div>
+              </div>
               <button onclick="saveConfig()" class="success" style="margin-top: 10px;">💾 Save Configuration</button>
+              <button onclick="enableMaxPrivacy()" class="warning" style="margin-left: 10px;">🔐 Quick Privacy Mode</button>
               
               <h3 style="margin-top: 30px;">🔐 Change Admin Password</h3>
               <div style="background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 10px; margin-top: 10px;">
@@ -965,7 +994,9 @@ app.get('/', (req, res) => {
             rateLimitWindow: parseInt(document.getElementById('rateLimitWindow').value),
             maxRequestsPerWindow: parseInt(document.getElementById('maxRequestsPerWindow').value),
             enableLogging: document.querySelector('.toggle[onclick*="enableLogging"]').classList.contains('active'),
-            enableRateLimit: document.querySelector('.toggle[onclick*="enableRateLimit"]').classList.contains('active')
+            enableRateLimit: document.querySelector('.toggle[onclick*="enableRateLimit"]').classList.contains('active'),
+            privacyMode: document.querySelector('.toggle[onclick*="privacyMode"]')?.classList.contains('active') || false,
+            anonymizeIPs: document.querySelector('.toggle[onclick*="anonymizeIPs"]')?.classList.contains('active') || false
           };
           
           const response = await fetch('/admin/config', {
@@ -980,8 +1011,22 @@ app.get('/', (req, res) => {
           const data = await response.json();
           if (data.success) {
             alert('Configuration saved!');
+            if (config.privacyMode) {
+              alert('Privacy Mode enabled - No logging or tracking');
+            }
           } else {
             alert('Error: ' + (data.error || 'Unknown error'));
+          }
+        }
+        
+        function enableMaxPrivacy() {
+          if (confirm('Enable privacy mode? This will disable all logging and anonymize IPs.')) {
+            // Set toggles
+            document.querySelector('.toggle[onclick*="privacyMode"]')?.classList.add('active');
+            document.querySelector('.toggle[onclick*="anonymizeIPs"]')?.classList.add('active');
+            document.querySelector('.toggle[onclick*="enableLogging"]')?.classList.remove('active');
+            // Save
+            saveConfig();
           }
         }
         
@@ -1159,7 +1204,8 @@ gun.on('hi', function(peer) {
     
     stats.peerMap.set(peerId, {
       id: peerId,
-      ip: peerIp,
+      ip: getDisplayIP(peerIp),
+      rawIp: peerIp,  // Keep raw IP for security checks
       wire: peer.wire,
       connectedAt: Date.now(),
       messageCount: 0,
@@ -1167,7 +1213,7 @@ gun.on('hi', function(peer) {
       lastActivity: Date.now()
     });
     
-    log('INFO', `Peer connected: ${peerId} from ${peerIp}`);
+    log('INFO', `Peer connected: ${peerId} from ${getDisplayIP(peerIp)}`);
   } catch (err) {
     errorTracker.track(err, 'Connection handler');
   }
