@@ -4,14 +4,16 @@ Enhanced Gun.js relay server with admin controls, comprehensive monitoring, stat
 
 ## ✨ Features
 
-### 🎮 Admin Control Panel (NEW!)
+### 🎮 Admin Control Panel (v3.0)
 - **Web-based Admin Interface** - Control everything from your browser/mobile
 - **Server Controls** - Pause/resume server, maintenance mode
 - **Peer Management** - Kick or ban specific peers
 - **IP Management** - Ban/unban IP addresses
 - **Configuration Management** - Change settings without restart
 - **Real-time Log Viewer** - View logs filtered by level
-- **Password Protected** - Secure admin access
+- **Password Management** - Change admin password from UI
+- **Session Management** - Secure login/logout with session tokens
+- **Mobile Optimized** - Fully responsive design
 
 ## ✨ Core Features
 
@@ -36,13 +38,25 @@ Enhanced Gun.js relay server with admin controls, comprehensive monitoring, stat
 
 ## 🚀 Quick Start
 
+### For Mobile Users (Recommended)
+1. **Deploy to Render.com** (FREE)
+   - Fork/use this repo
+   - Connect to Render.com
+   - Deploy in 2 minutes
+   - Access from anywhere on mobile
+
 ### Local Development
 ```bash
+# Clone repository
+git clone https://github.com/danxdz/gun-relay
+cd gun-relay
+
 # Install dependencies
 npm install
 
 # Start server
 npm start
+# Server runs at http://localhost:8765
 
 # Development mode with auto-reload
 npm run dev
@@ -139,9 +153,18 @@ ADMIN_PASSWORD=admin123   # Admin panel password (CHANGE THIS!)
    - **Peer Management**: View, kick, or ban connected peers
    - **IP Management**: Ban/unban specific IP addresses
    - **Configuration**: Change settings without server restart
+   - **Password Management**: Change admin password directly from UI
    - **Logs**: View real-time logs filtered by level
+5. **Logout**: Use the logout button (🚪) in top-right corner when done
 
 **⚠️ IMPORTANT**: Change the default admin password in production!
+
+### 🔑 Password Management
+
+- **Change Password**: Go to Config tab → scroll to "Change Admin Password"
+- **Password Requirements**: Minimum 6 characters
+- **Persistence**: Password saved to `.admin_password` file (gitignored)
+- **Security**: All sessions invalidated after password change
 
 ## 📈 Monitoring
 
@@ -293,6 +316,29 @@ For issues or questions:
 - Open an issue on GitHub
 - Check the error logs in dashboard
 - Use `npm run monitor` for debugging
+
+## 📋 Changelog
+
+### Version 3.0.0 (Latest)
+- ✅ Added comprehensive admin control panel
+- ✅ Web-based interface for server management
+- ✅ Password change functionality from UI
+- ✅ Login/logout session management
+- ✅ Peer kick/ban capabilities
+- ✅ Real-time configuration updates
+- ✅ Enhanced mobile responsiveness
+
+### Version 2.0.0
+- ✅ Added monitoring dashboard
+- ✅ Statistics tracking
+- ✅ Health check endpoints
+- ✅ Docker support
+- ✅ Rate limiting
+
+### Version 1.0.0
+- ✅ Basic Gun.js relay server
+- ✅ WebSocket support
+- ✅ Initial setup
 
 ---
 
