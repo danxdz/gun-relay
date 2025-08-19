@@ -735,7 +735,7 @@ app.get('/', (req, res) => {
           
           <div id="adminLogin" class="admin-login">
             <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')adminLogin()">
-            <button onclick="adminLogin()" id="loginBtn">Login</button>
+            <button type="button" id="loginBtn">Login</button>
             <br><br>
             <small style="opacity: 0.7;">Having issues? Try: Ctrl+Shift+L for emergency login</small>
           </div>
@@ -898,21 +898,31 @@ app.get('/', (req, res) => {
           document.getElementById('adminControls').style.display = 'block';
         }
         
-        async function adminLogin() {
-          try {
-            const password = document.getElementById('adminPassword').value;
-            if (!password) {
-              alert('Please enter a password');
-              return;
-            }
-            
-            const response = await fetch('/admin/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ password })
-            });
-            
-            const data = await response.json();
+        // Add click event to login button
+        document.getElementById('loginBtn').addEventListener('click', function() {
+          console.log('Login button clicked');
+          adminLogin();
+        });
+        
+        function adminLogin() {
+          console.log('adminLogin function called');
+          const password = document.getElementById('adminPassword').value;
+          
+          if (!password) {
+            alert('Please enter a password');
+            return;
+          }
+          
+          console.log('Sending login request...');
+          
+          fetch('/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Login response:', data);
             if (data.success) {
               adminSession = data.session;
               localStorage.setItem('adminSession', adminSession);
@@ -922,10 +932,11 @@ app.get('/', (req, res) => {
             } else {
               alert('Invalid password!');
             }
-          } catch (error) {
+          })
+          .catch(error => {
             console.error('Login error:', error);
             alert('Login failed: ' + error.message);
-          }
+          });
         }
         
         async function logout() {
