@@ -1,8 +1,19 @@
 # 🔫 Gun Relay Server for Whisperz
 
-Enhanced Gun.js relay server with comprehensive monitoring, statistics, and security features for Whisperz P2P chat.
+Enhanced Gun.js relay server with admin controls, comprehensive monitoring, statistics, and security features for Whisperz P2P chat.
 
 ## ✨ Features
+
+### 🎮 Admin Control Panel (NEW!)
+- **Web-based Admin Interface** - Control everything from your browser/mobile
+- **Server Controls** - Pause/resume server, maintenance mode
+- **Peer Management** - Kick or ban specific peers
+- **IP Management** - Ban/unban IP addresses
+- **Configuration Management** - Change settings without restart
+- **Real-time Log Viewer** - View logs filtered by level
+- **Password Protected** - Secure admin access
+
+## ✨ Core Features
 
 ### Core Functionality
 - **Gun.js WebSocket Relay** - Enables P2P connections for mobile/NAT users
@@ -115,7 +126,22 @@ Environment variables:
 PORT=8765                 # Server port
 MAX_CONNECTIONS=1000      # Maximum concurrent connections
 NODE_ENV=production       # Environment (development/production)
+ADMIN_PASSWORD=admin123   # Admin panel password (CHANGE THIS!)
 ```
+
+### 🔐 Admin Panel Access
+
+1. Navigate to your server dashboard (e.g., `http://localhost:8765/`)
+2. Click on "Admin Control Panel"
+3. Enter the admin password (default: `admin123`)
+4. Access full control features:
+   - **Server Controls**: Pause/resume, maintenance mode, clear stats
+   - **Peer Management**: View, kick, or ban connected peers
+   - **IP Management**: Ban/unban specific IP addresses
+   - **Configuration**: Change settings without server restart
+   - **Logs**: View real-time logs filtered by level
+
+**⚠️ IMPORTANT**: Change the default admin password in production!
 
 ## 📈 Monitoring
 
@@ -270,4 +296,4 @@ For issues or questions:
 
 ---
 
-**Version:** 2.0.0 | **Last Updated:** January 2024
+**Version:** 3.0.0 | **Last Updated:** January 2024
