@@ -734,12 +734,10 @@ app.get('/', (req, res) => {
           <h2>🔐 Admin Control Panel</h2>
           
           <div id="adminLogin" class="admin-login">
-            <input type="password" id="adminPassword" placeholder="Enter admin password">
-            <button type="button" id="loginBtn" style="padding: 15px 30px; font-size: 1.2em;">Login</button>
+            <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')adminLogin()">
+            <button type="button" id="loginBtn">Login</button>
             <br><br>
-            <button type="button" onclick="window.simpleLogin()" style="background: rgba(251, 191, 36, 0.3); padding: 10px 20px;">Alternative Login</button>
-            <br><br>
-            <small style="opacity: 0.7;">Mobile: Tap title 5 times for quick login</small>
+            <small style="opacity: 0.7;">Having issues? Try: Ctrl+Shift+L for emergency login</small>
           </div>
           
           <div id="adminControls" style="display: none;">
@@ -900,52 +898,11 @@ app.get('/', (req, res) => {
           document.getElementById('adminControls').style.display = 'block';
         }
         
-        // Super simple login for mobile
-        window.simpleLogin = function() {
-          alert('Login attempt starting...');
-          var pass = document.getElementById('adminPassword').value || prompt('Enter password:');
-          if (!pass) {
-            alert('No password entered');
-            return;
-          }
-          
-          var xhr = new XMLHttpRequest();
-          xhr.open('POST', '/admin/login', true);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-              if (xhr.status === 200) {
-                try {
-                  var data = JSON.parse(xhr.responseText);
-                  if (data.success) {
-                    adminSession = data.session;
-                    localStorage.setItem('adminSession', adminSession);
-                    document.getElementById('adminLogin').style.display = 'none';
-                    document.getElementById('adminControls').style.display = 'block';
-                    alert('Login successful!');
-                  } else {
-                    alert('Wrong password!');
-                  }
-                } catch (e) {
-                  alert('Error: ' + e.message);
-                }
-              } else {
-                alert('Server error: ' + xhr.status);
-              }
-            }
-          };
-          xhr.send(JSON.stringify({password: pass}));
-        };
-        
-        // Try to add click event to login button
-        setTimeout(function() {
-          var btn = document.getElementById('loginBtn');
-          if (btn) {
-            btn.onclick = function() {
-              window.simpleLogin();
-            };
-          }
-        }, 100);
+        // Add click event to login button
+        document.getElementById('loginBtn').addEventListener('click', function() {
+          console.log('Login button clicked');
+          adminLogin();
+        });
         
         function adminLogin() {
           console.log('adminLogin function called');
