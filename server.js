@@ -736,8 +736,6 @@ app.get('/', (req, res) => {
           <div id="adminLogin" class="admin-login">
             <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')adminLogin()">
             <button onclick="adminLogin()" id="loginBtn">Login</button>
-            <br><br>
-            <small style="opacity: 0.7;">Having issues? Try: Ctrl+Shift+L for emergency login</small>
           </div>
           
           <div id="adminControls" style="display: none;">
@@ -1136,42 +1134,6 @@ app.get('/', (req, res) => {
             alert('Error: ' + (data.error || 'Failed to change password'));
           }
         }
-        
-        // Emergency login shortcut
-        document.addEventListener('keydown', function(e) {
-          if (e.ctrlKey && e.shiftKey && e.key === 'L') {
-            e.preventDefault();
-            const pass = prompt('Emergency Login - Enter password:');
-            if (pass) {
-              document.getElementById('adminPassword').value = pass;
-              adminLogin();
-            }
-          }
-          // Debug mode: Ctrl+Shift+D
-          if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-            e.preventDefault();
-            console.log('Debug Info:');
-            console.log('Admin Session:', adminSession);
-            console.log('Login Display:', document.getElementById('adminLogin').style.display);
-            console.log('Controls Display:', document.getElementById('adminControls').style.display);
-            alert('Debug info logged to console (F12)');
-          }
-        });
-        
-        // Simple direct login for mobile (tap 5 times on title)
-        let tapCount = 0;
-        document.querySelector('h1').addEventListener('click', function() {
-          tapCount++;
-          if (tapCount === 5) {
-            tapCount = 0;
-            const pass = prompt('Quick Login - Enter password:');
-            if (pass) {
-              document.getElementById('adminPassword').value = pass;
-              adminLogin();
-            }
-          }
-          setTimeout(() => tapCount = 0, 2000);
-        });
         
         // Auto-refresh every 30 seconds
         setTimeout(() => location.reload(), 30000);
