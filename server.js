@@ -171,6 +171,19 @@ app.post('/admin/login', (req, res) => {
   }
 });
 
+// Admin logout endpoint
+app.post('/admin/logout', (req, res) => {
+  const session = req.headers['x-admin-session'] || req.query.session;
+  
+  if (session && adminSessions.has(session)) {
+    adminSessions.delete(session);
+    log('INFO', `Admin logged out (session: ${session.substring(0, 8)}...)`);
+    res.json({ success: true, message: 'Logged out successfully' });
+  } else {
+    res.json({ success: true, message: 'Session already expired or invalid' });
+  }
+});
+
 // Admin control endpoints
 app.post('/admin/control/:action', (req, res) => {
   if (!isAuthenticated(req)) {
@@ -491,9 +504,22 @@ app.get('/', (req, res) => {
           background: rgba(248, 113, 113, 0.3);
           border-color: rgba(248, 113, 113, 0.5);
         }
+        button.danger:hover {
+          background: rgba(248, 113, 113, 0.5);
+        }
         button.success {
           background: rgba(74, 222, 128, 0.3);
           border-color: rgba(74, 222, 128, 0.5);
+        }
+        button.success:hover {
+          background: rgba(74, 222, 128, 0.5);
+        }
+        button.warning {
+          background: rgba(251, 191, 36, 0.3);
+          border-color: rgba(251, 191, 36, 0.5);
+        }
+        button.warning:hover {
+          background: rgba(251, 191, 36, 0.5);
         }
         input {
           background: rgba(255, 255, 255, 0.1);
@@ -685,11 +711,14 @@ app.get('/', (req, res) => {
           </div>
           
           <div id="adminControls" style="display: none;">
-            <div class="tabs">
-              <div class="tab active" onclick="switchTab('controls')">Controls</div>
-              <div class="tab" onclick="switchTab('peers')">Peers</div>
-              <div class="tab" onclick="switchTab('config')">Config</div>
-              <div class="tab" onclick="switchTab('logs')">Logs</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <div class="tabs">
+                <div class="tab active" onclick="switchTab('controls')">Controls</div>
+                <div class="tab" onclick="switchTab('peers')">Peers</div>
+                <div class="tab" onclick="switchTab('config')">Config</div>
+                <div class="tab" onclick="switchTab('logs')">Logs</div>
+              </div>
+              <button onclick="logout()" class="danger" style="margin-left: auto;">🚪 Logout</button>
             </div>
             
             <!-- Controls Tab -->
@@ -829,6 +858,30 @@ app.get('/', (req, res) => {
             alert('Login successful!');
           } else {
             alert('Invalid password!');
+          }
+        }
+        
+        async function logout() {
+          if (confirm('Are you sure you want to logout?')) {
+            // Call server to invalidate session
+            if (adminSession) {
+              try {
+                await fetch('/admin/logout', {
+                  method: 'POST',
+                  headers: { 'X-Admin-Session': adminSession }
+                });
+              } catch (err) {
+                console.error('Error calling logout endpoint:', err);
+              }
+            }
+            
+            // Clear local session
+            localStorage.removeItem('adminSession');
+            adminSession = null;
+            document.getElementById('adminLogin').style.display = 'block';
+            document.getElementById('adminControls').style.display = 'none';
+            document.getElementById('adminPassword').value = '';
+            alert('Logged out successfully!');
           }
         }
         
