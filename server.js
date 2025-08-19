@@ -53,7 +53,12 @@ let config = {
   maxRequestsPerWindow: MAX_REQUESTS_PER_WINDOW,
   enableLogging: true,
   enableRateLimit: true,
-  maintenanceMode: false
+  maintenanceMode: false,
+  // Privacy settings
+  privacyMode: false,
+  anonymizeIPs: false,
+  disableStats: false,
+  ephemeralData: false
 };
 
 // Logger
