@@ -1,11 +1,14 @@
 {
   "name": "gun-relay",
-  "version": "1.0.0",
-  "description": "Private Gun.js relay server for Whisperz P2P chat",
+  "version": "2.0.0",
+  "description": "Enhanced Gun.js relay server with monitoring for Whisperz P2P chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node --watch server.js",
+    "test": "node test-connection.js",
+    "monitor": "node monitor.js",
+    "clean": "rm -rf radata data *.log"
   },
   "engines": {
     "node": ">=14.0.0"
@@ -15,7 +18,10 @@
     "express": "^4.18.2",
     "cors": "^2.8.5"
   },
-  "keywords": ["gun", "relay", "p2p", "websocket"],
+  "optionalDependencies": {
+    "ws": "^8.14.2"
+  },
+  "keywords": ["gun", "relay", "p2p", "websocket", "monitoring", "dashboard"],
   "author": "",
   "license": "MIT"
 }

@@ -8,3 +8,13 @@ yarn-error.log*
 data/
 radata/
 *.log
+ssl/
+*.pem
+*.crt
+*.key
+.vscode/
+.idea/
+dist/
+build/
+coverage/
+.nyc_output/
