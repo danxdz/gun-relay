@@ -734,8 +734,8 @@ app.get('/', (req, res) => {
           <h2>🔐 Admin Control Panel</h2>
           
           <div id="adminLogin" class="admin-login">
-            <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')adminLogin()">
-            <button onclick="adminLogin()" id="loginBtn">Login</button>
+            <input type="password" id="adminPassword" placeholder="Enter admin password">
+            <button onclick="adminLogin()">Login</button>
           </div>
           
           <div id="adminControls" style="display: none;">
@@ -897,32 +897,22 @@ app.get('/', (req, res) => {
         }
         
         async function adminLogin() {
-          try {
-            const password = document.getElementById('adminPassword').value;
-            if (!password) {
-              alert('Please enter a password');
-              return;
-            }
-            
-            const response = await fetch('/admin/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ password })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-              adminSession = data.session;
-              localStorage.setItem('adminSession', adminSession);
-              document.getElementById('adminLogin').style.display = 'none';
-              document.getElementById('adminControls').style.display = 'block';
-              alert('Login successful!');
-            } else {
-              alert('Invalid password!');
-            }
-          } catch (error) {
-            console.error('Login error:', error);
-            alert('Login failed: ' + error.message);
+          const password = document.getElementById('adminPassword').value;
+          const response = await fetch('/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            adminSession = data.session;
+            localStorage.setItem('adminSession', adminSession);
+            document.getElementById('adminLogin').style.display = 'none';
+            document.getElementById('adminControls').style.display = 'block';
+            alert('Login successful!');
+          } else {
+            alert('Invalid password!');
           }
         }
         
@@ -1024,12 +1014,12 @@ app.get('/', (req, res) => {
             maxConnections: parseInt(document.getElementById('maxConnections').value),
             rateLimitWindow: parseInt(document.getElementById('rateLimitWindow').value),
             maxRequestsPerWindow: parseInt(document.getElementById('maxRequestsPerWindow').value),
-            enableLogging: document.querySelector('.toggle[onclick*="enableLogging"]')?.classList.contains('active') || false,
-            enableRateLimit: document.querySelector('.toggle[onclick*="enableRateLimit"]')?.classList.contains('active') || true,
-            privacyMode: document.querySelector('.toggle[onclick*="privacyMode"]')?.classList.contains('active') || false,
-            anonymizeIPs: document.querySelector('.toggle[onclick*="anonymizeIPs"]')?.classList.contains('active') || false,
-            disableStats: document.querySelector('.toggle[onclick*="disableStats"]')?.classList.contains('active') || false,
-            ephemeralData: document.querySelector('.toggle[onclick*="ephemeralData"]')?.classList.contains('active') || false
+            enableLogging: document.querySelector('.toggle[onclick*="enableLogging"]').classList.contains('active'),
+            enableRateLimit: document.querySelector('.toggle[onclick*="enableRateLimit"]').classList.contains('active'),
+            privacyMode: document.querySelector('.toggle[onclick*="privacyMode"]').classList.contains('active'),
+            anonymizeIPs: document.querySelector('.toggle[onclick*="anonymizeIPs"]').classList.contains('active'),
+            disableStats: document.querySelector('.toggle[onclick*="disableStats"]').classList.contains('active'),
+            ephemeralData: document.querySelector('.toggle[onclick*="ephemeralData"]').classList.contains('active')
           };
           
           const response = await fetch('/admin/config', {
