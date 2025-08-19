@@ -5,6 +5,13 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+// Note: helmet is optional, server works without it
+let helmet;
+try {
+  helmet = require('helmet');
+} catch (e) {
+  console.log('Helmet not installed, continuing without security headers');
+}
 
 const app = express();
 const PORT = process.env.PORT || 8765;
@@ -165,8 +172,15 @@ function checkRateLimit(ip) {
 }
 
 // Middleware
+if (helmet) {
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disabled for Gun.js compatibility
+    crossOriginEmbedderPolicy: false
+  }));
+}
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // Limit request size to prevent DoS
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // Serve Gun
 app.use(Gun.serve);
@@ -174,6 +188,11 @@ app.use(Gun.serve);
 // Admin login endpoint
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
+  
+  // Validate input
+  if (!password || typeof password !== 'string' || password.length > 100) {
+    return res.status(400).json({ success: false, error: 'Invalid input' });
+  }
   
   if (password === ADMIN_PASSWORD) {
     const session = generateSession();
@@ -1039,9 +1058,15 @@ app.get('/', (req, res) => {
           if (response.ok) {
             const logs = await response.json();
             const logViewer = document.getElementById('logViewer');
+            // Safely escape HTML to prevent XSS
+            function escapeHtml(text) {
+              const div = document.createElement('div');
+              div.textContent = text;
+              return div.innerHTML;
+            }
             logViewer.innerHTML = logs.map(log => \`
-              <div class="log-entry log-\${log.level}">
-                <strong>\${log.timestamp}</strong> [\${log.level}] \${log.message}
+              <div class="log-entry log-\${escapeHtml(log.level)}">
+                <strong>\${escapeHtml(log.timestamp)}</strong> [\${escapeHtml(log.level)}] \${escapeHtml(log.message)}
               </div>
             \`).join('') || '<p>No logs available</p>';
           }
@@ -1254,8 +1279,8 @@ gun.on('in', function(msg) {
   }
 });
 
-// Cleanup interval
-setInterval(() => {
+// Cleanup interval - store reference for cleanup
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   const timeout = 5 * 60 * 1000;
   
@@ -1276,14 +1301,33 @@ setInterval(() => {
 }, 60000);
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  log('WARN', 'SIGTERM received, shutting down');
-  server.close(() => process.exit(0));
-});
+function gracefulShutdown(signal) {
+  log('WARN', `${signal} received, shutting down gracefully`);
+  
+  // Clear intervals
+  clearInterval(cleanupInterval);
+  
+  // Close all peer connections
+  for (const [peerId, peerInfo] of stats.peerMap.entries()) {
+    if (peerInfo.wire) {
+      peerInfo.wire.close();
+    }
+  }
+  
+  // Close server
+  server.close(() => {
+    log('INFO', 'Server closed successfully');
+    process.exit(0);
+  });
+  
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    console.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+}
 
-process.on('SIGINT', () => {
-  log('WARN', 'SIGINT received, shutting down');
-  server.close(() => process.exit(0));
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 log('INFO', 'Gun.js relay initialized with admin controls');
