@@ -9,7 +9,17 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 8765;
 const MAX_CONNECTIONS = process.env.MAX_CONNECTIONS || 1000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+// Load saved password or use default
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+try {
+  if (fs.existsSync('.admin_password')) {
+    ADMIN_PASSWORD = fs.readFileSync('.admin_password', 'utf8').trim();
+  }
+} catch (err) {
+  console.log('Using default admin password');
+}
+
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 100;
 
@@ -309,6 +319,43 @@ app.post('/admin/config', (req, res) => {
   Object.assign(config, updates);
   log('INFO', 'Configuration updated', updates);
   res.json({ success: true, config });
+});
+
+// Change admin password
+app.post('/admin/change-password', (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new passwords required' });
+  }
+  
+  if (currentPassword !== ADMIN_PASSWORD) {
+    log('WARN', `Failed password change attempt from ${req.ip}`);
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters' });
+  }
+  
+  ADMIN_PASSWORD = newPassword;
+  
+  // Save password to file for persistence (optional)
+  try {
+    fs.writeFileSync('.admin_password', newPassword, 'utf8');
+  } catch (err) {
+    log('WARN', 'Could not save password to file', err);
+  }
+  
+  // Clear all existing sessions for security
+  adminSessions.clear();
+  
+  log('INFO', `Admin password changed successfully from ${req.ip}`);
+  res.json({ success: true, message: 'Password changed successfully. Please login again.' });
 });
 
 // Get logs
@@ -712,6 +759,14 @@ app.get('/', (req, res) => {
                 </div>
               </div>
               <button onclick="saveConfig()" class="success" style="margin-top: 10px;">💾 Save Configuration</button>
+              
+              <h3 style="margin-top: 30px;">🔐 Change Admin Password</h3>
+              <div style="background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 10px; margin-top: 10px;">
+                <input type="password" id="currentPassword" placeholder="Current Password" style="display: block; width: 100%; margin-bottom: 10px;">
+                <input type="password" id="newPassword" placeholder="New Password (min 6 chars)" style="display: block; width: 100%; margin-bottom: 10px;">
+                <input type="password" id="confirmPassword" placeholder="Confirm New Password" style="display: block; width: 100%; margin-bottom: 10px;">
+                <button onclick="changePassword()" class="danger">🔑 Change Password</button>
+              </div>
             </div>
             
             <!-- Logs Tab -->
@@ -886,6 +941,45 @@ app.get('/', (req, res) => {
                 <strong>\${log.timestamp}</strong> [\${log.level}] \${log.message}
               </div>
             \`).join('') || '<p>No logs available</p>';
+          }
+        }
+        
+        async function changePassword() {
+          const currentPassword = document.getElementById('currentPassword').value;
+          const newPassword = document.getElementById('newPassword').value;
+          const confirmPassword = document.getElementById('confirmPassword').value;
+          
+          if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('Please fill in all password fields');
+            return;
+          }
+          
+          if (newPassword !== confirmPassword) {
+            alert('New passwords do not match');
+            return;
+          }
+          
+          if (newPassword.length < 6) {
+            alert('New password must be at least 6 characters');
+            return;
+          }
+          
+          const response = await fetch('/admin/change-password', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Admin-Session': adminSession 
+            },
+            body: JSON.stringify({ currentPassword, newPassword })
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            alert(data.message);
+            localStorage.removeItem('adminSession');
+            location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to change password'));
           }
         }
         
