@@ -1,6 +1,6 @@
 {
   "name": "gun-relay",
-  "version": "3.1.0",
+  "version": "3.0.0",
   "description": "Enhanced Gun.js relay server with admin controls and monitoring for Whisperz P2P chat",
   "main": "server.js",
   "scripts": {

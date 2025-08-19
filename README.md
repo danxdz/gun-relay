@@ -4,22 +4,12 @@ Enhanced Gun.js relay server with admin controls, comprehensive monitoring, stat
 
 ## ✨ Features
 
-### 🔒 Privacy & Security (v3.1)
-- **🛡️ Privacy Mode** - One-click maximum privacy activation
-- **🎭 IP Anonymization** - Hide real IP addresses in logs
-- **📊 Statistics Disable** - Turn off all tracking
-- **💨 Ephemeral Mode** - No data storage, RAM only
-- **🔐 Zero-Knowledge** - Relay cannot decrypt E2E encrypted messages
-- **🚫 No WebRTC Leaks** - No IP exposure between users
-- **✅ VPN/Tor Compatible** - Works perfectly with privacy tools
-
-### 🎮 Admin Control Panel (v3.1)
+### 🎮 Admin Control Panel (v3.0)
 - **Web-based Admin Interface** - Control everything from your browser/mobile
 - **Server Controls** - Pause/resume server, maintenance mode
 - **Peer Management** - Kick or ban specific peers
 - **IP Management** - Ban/unban IP addresses
 - **Configuration Management** - Change settings without restart
-- **Privacy Controls** - Toggle privacy features from UI
 - **Real-time Log Viewer** - View logs filtered by level
 - **Password Management** - Change admin password from UI
 - **Session Management** - Secure login/logout with session tokens
@@ -176,37 +166,6 @@ ADMIN_PASSWORD=admin123   # Admin panel password (CHANGE THIS!)
 - **Persistence**: Password saved to `.admin_password` file (gitignored)
 - **Security**: All sessions invalidated after password change
 
-### 🛡️ Privacy Settings
-
-Access privacy controls in the **Config tab** of admin panel:
-
-#### Quick Privacy Setup:
-1. Click **"🔐 Enable Max Privacy"** button for instant maximum privacy
-2. Or configure individually:
-
-| Setting | What it Does | When to Use |
-|---------|-------------|------------|
-| **Privacy Mode** | Disables ALL logging and tracking | Maximum privacy needed |
-| **Anonymize IPs** | Shows only partial IPs (192.168.x.x) | Hide user locations |
-| **Disable Statistics** | No connection/message counting | Reduce metadata |
-| **Ephemeral Data** | No data storage, RAM only | Leave no traces |
-
-#### Privacy Comparison:
-
-**Standard Mode:**
-- Full logging for debugging
-- Complete IP addresses
-- Statistics tracking
-- Data persistence
-
-**Maximum Privacy Mode:**
-- ❌ No logs whatsoever
-- ❌ No IP addresses stored
-- ❌ No statistics
-- ❌ No persistent data
-- ✅ Complete anonymity
-- ✅ Zero tracking
-
 ## 📈 Monitoring
 
 ### Built-in Monitor
@@ -360,15 +319,7 @@ For issues or questions:
 
 ## 📋 Changelog
 
-### Version 3.1.0 (Latest)
-- ✅ Added maximum privacy mode
-- ✅ IP anonymization feature
-- ✅ Ephemeral data mode (RAM only)
-- ✅ Statistics disable option
-- ✅ One-click privacy activation
-- ✅ Enhanced privacy controls in UI
-
-### Version 3.0.0
+### Version 3.0.0 (Latest)
 - ✅ Added comprehensive admin control panel
 - ✅ Web-based interface for server management
 - ✅ Password change functionality from UI
@@ -391,4 +342,4 @@ For issues or questions:
 
 ---
 
-**Version:** 3.1.0 | **Last Updated:** January 2024
+**Version:** 3.0.0 | **Last Updated:** January 2024
