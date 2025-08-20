@@ -53,6 +53,14 @@ const stats = {
   serverPaused: false
 };
 
+// Database instances configuration
+const DATABASE_INSTANCES = {
+  prod: { name: 'Production', path: 'radata' },
+  test: { name: 'Test', path: 'radata-test' },
+  dev: { name: 'Development', path: 'radata-dev' },
+  staging: { name: 'Staging', path: 'radata-staging' }
+};
+
 // Configuration that can be changed at runtime
 let config = {
   maxConnections: MAX_CONNECTIONS,
@@ -63,7 +71,9 @@ let config = {
   maintenanceMode: false,
   // Privacy settings - simplified
   privacyMode: false,
-  anonymizeIPs: false
+  anonymizeIPs: false,
+  // Database instance
+  currentDatabase: 'prod'
 };
 
 // Logger
@@ -1179,24 +1189,60 @@ const server = app.listen(PORT, () => {
   `);
 });
 
-// Initialize Gun
-const gun = Gun({ 
-  web: server,
-  radisk: true,
-  localStorage: false,
-  peers: [],
-  axe: false,
-  multicast: false,
-  stats: true,
-  log: function(msg) {
-    if (msg && typeof msg === 'object' && msg.err) {
-      errorTracker.track(msg.err, 'Gun internal');
+// Initialize Gun with dynamic database path
+let gun;
+
+function initializeGun(databaseKey = 'prod') {
+  const dbConfig = DATABASE_INSTANCES[databaseKey] || DATABASE_INSTANCES.prod;
+  
+  // Close existing Gun instance if exists
+  if (gun && gun._.opt && gun._.opt.web) {
+    try {
+      // Disconnect all peers
+      if (stats.peerMap) {
+        stats.peerMap.forEach((peer, id) => {
+          if (peer.wire) peer.wire.close();
+        });
+        stats.peerMap.clear();
+      }
+    } catch (err) {
+      console.error('Error closing previous Gun instance:', err);
     }
   }
-});
+  
+  log('info', `Initializing Gun with database: ${dbConfig.name} (${dbConfig.path})`);
+  
+  gun = Gun({ 
+    web: server,
+    radisk: true,
+    localStorage: false,
+    peers: [],
+    axe: false,
+    multicast: false,
+    stats: true,
+    file: dbConfig.path,  // Set the database path
+    log: function(msg) {
+      if (msg && typeof msg === 'object' && msg.err) {
+        errorTracker.track(msg.err, 'Gun internal');
+      }
+    }
+  });
+  
+  // Re-setup Gun handlers
+  setupGunHandlers();
+  
+  config.currentDatabase = databaseKey;
+  
+  return gun;
+}
 
-// Connection handling
-gun.on('hi', function(peer) {
+// Initialize with default database
+initializeGun(config.currentDatabase);
+
+// Setup Gun event handlers
+function setupGunHandlers() {
+  // Connection handling
+  gun.on('hi', function(peer) {
   try {
     // Check if server is paused or in maintenance
     if (stats.serverPaused || config.maintenanceMode) {
@@ -1242,10 +1288,10 @@ gun.on('hi', function(peer) {
   } catch (err) {
     errorTracker.track(err, 'Connection handler');
   }
-});
+  });
 
-gun.on('bye', function(peer) {
-  try {
+  gun.on('bye', function(peer) {
+    try {
     const peerId = peer.id || peer.url || 'unknown';
     stats.activeConnections = Math.max(0, stats.activeConnections - 1);
     
@@ -1254,13 +1300,13 @@ gun.on('bye', function(peer) {
       log('INFO', `Peer disconnected: ${peerId}`);
       stats.peerMap.delete(peerId);
     }
-  } catch (err) {
-    errorTracker.track(err, 'Disconnection handler');
-  }
-});
+    } catch (err) {
+      errorTracker.track(err, 'Disconnection handler');
+    }
+  });
 
-gun.on('in', function(msg) {
-  try {
+  gun.on('in', function(msg) {
+    try {
     if (!stats.serverPaused) {
       stats.totalMessages++;
       const size = JSON.stringify(msg).length;
