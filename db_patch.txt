@@ -1,0 +1,75 @@
+# Add this after line 197 (before app.post('/admin/login'))
+// Get database instances
+app.get('/admin/databases', (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  res.json({
+    instances: DATABASE_INSTANCES,
+    current: config.currentDatabase
+  });
+});
+
+# Add to the database selector UI (around line 826, complete the incomplete HTML):
+                <span id="currentDatabase" style="margin-right: 10px;">Current: Production</span>
+                <button onclick="switchDatabase()" class="success">🔄 Switch Database</button>
+              </div>
+
+# Add these JavaScript functions before "function enableMaxPrivacy()" (around line 1095):
+        async function switchDatabase() {
+          const selector = document.getElementById('databaseSelector');
+          const database = selector.value;
+          
+          if (!confirm(`Switch to ${selector.options[selector.selectedIndex].text} database? This will disconnect all peers.`)) {
+            return;
+          }
+          
+          try {
+            const response = await fetch('/admin/control/switch-database', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': sessionToken
+              },
+              body: JSON.stringify({ database })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              updateDatabaseDisplay();
+            } else {
+              alert('Failed to switch database: ' + (data.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Error switching database: ' + err.message);
+          }
+        }
+        
+        async function updateDatabaseDisplay() {
+          try {
+            const response = await fetch('/admin/databases', {
+              headers: {
+                'Authorization': sessionToken
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const selector = document.getElementById('databaseSelector');
+              const display = document.getElementById('currentDatabase');
+              
+              if (selector && display) {
+                selector.value = data.current;
+                const currentName = data.instances[data.current]?.name || 'Unknown';
+                display.textContent = `Current: ${currentName}`;
+              }
+            }
+          } catch (err) {
+            console.error('Error updating database display:', err);
+          }
+        }
+
+# Add this line inside showAdminPanel() function after displaying the panel:
+          updateDatabaseDisplay();

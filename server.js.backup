@@ -196,18 +196,6 @@ app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(Gun.serve);
 
 // Admin login endpoint
-// Get database instances
-app.get("/admin/databases", (req, res) => {
-  if (!isAuthenticated(req)) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  
-  res.json({
-    instances: DATABASE_INSTANCES,
-    current: config.currentDatabase
-  });
-});
-
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   
@@ -823,18 +811,6 @@ app.get('/', (req, res) => {
                 <button onclick="serverControl('clear-peers')" class="danger">👥 Disconnect All</button>
                 <button onclick="serverControl('maintenance-on')" class="danger">🔧 Maintenance ON</button>
                 <button onclick="serverControl('maintenance-off')" class="success">✅ Maintenance OFF</button>
-              </div>
-              
-              <h3>Database Instance</h3>
-              <div style="margin: 10px 0;">
-                <select id="databaseSelector" style="padding: 8px; margin-right: 10px;">
-                  <option value="prod">Production</option>
-                  <option value="test">Test</option>
-                  <option value="dev">Development</option>
-                  <option value="staging">Staging</option>
-                </select>
-                <span id="currentDatabase" style="margin-right: 10px;">Current: Production</span>
-                <button onclick="switchDatabase()" class="success">🔄 Switch Database</button>
               </div>
               
               <h3>IP Management</h3>
