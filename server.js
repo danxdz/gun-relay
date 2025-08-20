@@ -1243,13 +1243,157 @@ app.get('/', (req, res) => {
               const display = document.getElementById('currentDatabase');
               
               if (selector && display) {
-                selector.value = data.current;
+                // Clear and populate selector
+                selector.innerHTML = '';
+                for (const [key, instance] of Object.entries(data.instances)) {
+                  const option = document.createElement('option');
+                  option.value = key;
+                  option.textContent = instance.name;
+                  if (key === data.current) {
+                    option.selected = true;
+                  }
+                  selector.appendChild(option);
+                }
+                
                 const currentName = data.instances[data.current]?.name || 'Unknown';
                 display.textContent = \`Current: \${currentName}\`;
+                
+                // Store data globally for manager
+                window.databaseData = data;
               }
             }
           } catch (err) {
             console.error('Error updating database display:', err);
+          }
+        }
+        
+        function toggleDatabaseManager() {
+          const manager = document.getElementById('databaseManager');
+          if (manager.style.display === 'none') {
+            updateDatabaseManager();
+            manager.style.display = 'block';
+          } else {
+            manager.style.display = 'none';
+          }
+        }
+        
+        function updateDatabaseManager() {
+          if (!window.databaseData) return;
+          
+          // Update instances list
+          const instancesList = document.getElementById('instancesList');
+          instancesList.innerHTML = '';
+          
+          for (const [key, instance] of Object.entries(window.databaseData.instances)) {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 8px; margin: 5px 0; background: rgba(0,0,0,0.3); border-radius: 3px; display: flex; justify-content: space-between; align-items: center;';
+            
+            const info = document.createElement('span');
+            info.innerHTML = \`<strong>\${instance.name}</strong> (key: <code>\${key}</code>) - Path: <code>\${instance.path}</code>\`;
+            div.appendChild(info);
+            
+            if (key !== window.databaseData.current) {
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'danger';
+              deleteBtn.style.cssText = 'padding: 5px 10px; font-size: 12px;';
+              deleteBtn.textContent = '🗑️ Delete';
+              deleteBtn.onclick = () => removeDatabaseInstance(key);
+              div.appendChild(deleteBtn);
+            } else {
+              const activeLabel = document.createElement('span');
+              activeLabel.style.cssText = 'color: #4CAF50; font-weight: bold;';
+              activeLabel.textContent = '✓ Active';
+              div.appendChild(activeLabel);
+            }
+            
+            instancesList.appendChild(div);
+          }
+          
+          // Update existing directories
+          const existingDirs = document.getElementById('existingDirs');
+          existingDirs.innerHTML = '';
+          
+          if (window.databaseData.existingDirectories && window.databaseData.existingDirectories.length > 0) {
+            window.databaseData.existingDirectories.forEach(dir => {
+              const span = document.createElement('span');
+              span.style.cssText = 'display: inline-block; margin: 3px 5px; padding: 3px 8px; background: rgba(0,0,0,0.3); border-radius: 3px;';
+              span.textContent = dir;
+              existingDirs.appendChild(span);
+            });
+          } else {
+            existingDirs.innerHTML = '<em style="color: #999;">No data directories found</em>';
+          }
+        }
+        
+        async function addDatabaseInstance() {
+          const key = document.getElementById('newInstanceKey').value.trim();
+          const name = document.getElementById('newInstanceName').value.trim();
+          const path = document.getElementById('newInstancePath').value.trim();
+          
+          if (!key || !name || !path) {
+            alert('Please fill all fields');
+            return;
+          }
+          
+          if (!/^[a-z0-9_-]+$/i.test(key)) {
+            alert('Key must contain only letters, numbers, hyphens and underscores');
+            return;
+          }
+          
+          try {
+            const response = await fetch('/admin/databases/add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ key, name, path })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              document.getElementById('newInstanceKey').value = '';
+              document.getElementById('newInstanceName').value = '';
+              document.getElementById('newInstancePath').value = '';
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error: ' + data.error);
+            }
+          } catch (err) {
+            alert('Error adding instance: ' + err.message);
+          }
+        }
+        
+        async function removeDatabaseInstance(key) {
+          const instance = window.databaseData.instances[key];
+          if (!confirm(\`Delete database instance "\${instance.name}"?\\n\\nAlso delete the data directory "\${instance.path}"?\\n(Click OK to delete directory too, Cancel to only remove from list)\`)) {
+            return;
+          }
+          
+          const deleteDir = confirm(\`Delete the data directory "\${instance.path}" from disk?\`);
+          
+          try {
+            const response = await fetch('/admin/databases/remove', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ key, deleteDirectory: deleteDir })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error: ' + data.error);
+            }
+          } catch (err) {
+            alert('Error removing instance: ' + err.message);
           }
         }
         
