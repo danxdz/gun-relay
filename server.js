@@ -197,15 +197,1481 @@ app.use(Gun.serve);
 
 // Admin login endpoint
 // Get database instances
+// Get database instances and existing directories
 app.get("/admin/databases", (req, res) => {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  if (!isAuthenticated(req)) {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    return res.status(401).json({ error: "Unauthorized" });
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  }
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  // Check for existing data directories
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  const existingDirs = [];
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  const dataPattern = /^radata/;
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  try {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    const files = fs.readdirSync(".");
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    files.forEach(file => {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+      if (dataPattern.test(file) && fs.statSync(file).isDirectory()) {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+        existingDirs.push(file);
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+      }
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    });
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  } catch (err) {
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    console.error("Error reading directories:", err);
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  }
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+  
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
   res.json({
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
     instances: DATABASE_INSTANCES,
-    current: config.currentDatabase
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    current: config.currentDatabase,
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+    existingDirectories: existingDirs
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
   });
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
+});
+});
+
+// Add new database instance
+app.post("/admin/databases/add", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, name, path } = req.body;
+  
+  if (!key || !name || !path) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  if (DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance key already exists" });
+  }
+  
+  DATABASE_INSTANCES[key] = { name, path };
+  log("INFO", `Added new database instance: ${key} (${name})`);
+  
+  res.json({ success: true, message: `Added ${name} instance` });
+});
+
+// Remove database instance
+app.post("/admin/databases/remove", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  if (key === config.currentDatabase) {
+    return res.status(400).json({ error: "Cannot remove current active database" });
+  }
+  
+  // Optionally delete the directory
+  const { deleteDirectory } = req.body;
+  if (deleteDirectory) {
+    const dirPath = DATABASE_INSTANCES[key].path;
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        log("INFO", `Deleted directory: ${dirPath}`);
+      }
+    } catch (err) {
+      log("ERROR", `Failed to delete directory: ${dirPath}`, err);
+    }
+  }
+  
+  delete DATABASE_INSTANCES[key];
+  log("INFO", `Removed database instance: ${key}`);
+  
+  res.json({ success: true, message: `Removed instance` });
 });
 
 app.post('/admin/login', (req, res) => {
@@ -828,13 +2294,34 @@ app.get('/', (req, res) => {
               <h3>Database Instance</h3>
               <div style="margin: 10px 0;">
                 <select id="databaseSelector" style="padding: 8px; margin-right: 10px;">
-                  <option value="prod">Production</option>
-                  <option value="test">Test</option>
-                  <option value="dev">Development</option>
-                  <option value="staging">Staging</option>
+                  <!-- Will be populated dynamically -->
                 </select>
-                <span id="currentDatabase" style="margin-right: 10px;">Current: Production</span>
-                <button onclick="switchDatabase()" class="success">🔄 Switch Database</button>
+                <span id="currentDatabase" style="margin-right: 10px;">Current: Loading...</span>
+                <button onclick="switchDatabase()" class="success">🔄 Switch</button>
+                <button onclick="toggleDatabaseManager()" style="margin-left: 10px;">⚙️ Manage</button>
+              </div>
+              
+              <!-- Database Manager -->
+              <div id="databaseManager" style="display: none; margin-top: 10px; padding: 15px; background: #2a2a2a; border-radius: 5px;">
+                <h4>📊 Database Management</h4>
+                
+                <div style="margin: 15px 0;">
+                  <h5>Current Instances:</h5>
+                  <div id="instancesList" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <div style="margin: 15px 0; padding: 10px; background: #1a1a1a; border-radius: 5px;">
+                  <h5>➕ Add New Instance:</h5>
+                  <input type="text" id="newInstanceKey" placeholder="Key (e.g., backup)" style="width: 120px; margin: 5px;">
+                  <input type="text" id="newInstanceName" placeholder="Name (e.g., Backup DB)" style="width: 150px; margin: 5px;">
+                  <input type="text" id="newInstancePath" placeholder="Path (e.g., radata-backup)" style="width: 150px; margin: 5px;">
+                  <button onclick="addDatabaseInstance()" class="success">Add Instance</button>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                  <h5>📁 Existing Data Directories:</h5>
+                  <div id="existingDirs" style="font-family: monospace; color: #888;"></div>
+                </div>
               </div>
               
               <h3>IP Management</h3>
@@ -1149,13 +2636,155 @@ app.get('/', (req, res) => {
               const display = document.getElementById('currentDatabase');
               
               if (selector && display) {
-                selector.value = data.current;
+                // Clear and populate selector
+                selector.innerHTML = '';
+                for (const [key, instance] of Object.entries(data.instances)) {
+                  const option = document.createElement('option');
+                  option.value = key;
+                  option.textContent = instance.name;
+                  if (key === data.current) {
+                    option.selected = true;
+                  }
+                  selector.appendChild(option);
+                }
+                
                 const currentName = data.instances[data.current]?.name || 'Unknown';
                 display.textContent = \`Current: \${currentName}\`;
+                
+                // Store data globally for manager
+                window.databaseData = data;
               }
             }
           } catch (err) {
             console.error('Error updating database display:', err);
+          }
+        }
+        
+        function toggleDatabaseManager() {
+          const manager = document.getElementById('databaseManager');
+          if (manager.style.display === 'none') {
+            updateDatabaseManager();
+            manager.style.display = 'block';
+          } else {
+            manager.style.display = 'none';
+          }
+        }
+        
+        function updateDatabaseManager() {
+          if (!window.databaseData) return;
+          
+          // Update instances list
+          const instancesList = document.getElementById('instancesList');
+          instancesList.innerHTML = '';
+          
+          for (const [key, instance] of Object.entries(window.databaseData.instances)) {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 8px; margin: 5px 0; background: #1a1a1a; border-radius: 3px; display: flex; justify-content: space-between; align-items: center;';
+            
+            const info = document.createElement('span');
+            info.innerHTML = \`<strong>\${instance.name}</strong> (key: <code>\${key}</code>) - Path: <code>\${instance.path}</code>\`;
+            div.appendChild(info);
+            
+            if (key !== window.databaseData.current) {
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'danger';
+              deleteBtn.style.cssText = 'padding: 5px 10px; font-size: 12px;';
+              deleteBtn.textContent = '🗑️ Delete';
+              deleteBtn.onclick = () => removeDatabaseInstance(key);
+              div.appendChild(deleteBtn);
+            } else {
+              const activeLabel = document.createElement('span');
+              activeLabel.style.cssText = 'color: #4CAF50; font-weight: bold;';
+              activeLabel.textContent = '✓ Active';
+              div.appendChild(activeLabel);
+            }
+            
+            instancesList.appendChild(div);
+          }
+          
+          // Update existing directories
+          const existingDirs = document.getElementById('existingDirs');
+          existingDirs.innerHTML = '';
+          
+          if (window.databaseData.existingDirectories && window.databaseData.existingDirectories.length > 0) {
+            window.databaseData.existingDirectories.forEach(dir => {
+              const span = document.createElement('span');
+              span.style.cssText = 'display: inline-block; margin: 3px 5px; padding: 3px 8px; background: #333; border-radius: 3px;';
+              span.textContent = dir;
+              existingDirs.appendChild(span);
+            });
+          } else {
+            existingDirs.innerHTML = '<em>No data directories found</em>';
+          }
+        }
+        
+        async function addDatabaseInstance() {
+          const key = document.getElementById('newInstanceKey').value.trim();
+          const name = document.getElementById('newInstanceName').value.trim();
+          const path = document.getElementById('newInstancePath').value.trim();
+          
+          if (!key || !name || !path) {
+            alert('Please fill all fields');
+            return;
+          }
+          
+          if (!/^[a-z0-9_-]+$/i.test(key)) {
+            alert('Key must contain only letters, numbers, hyphens and underscores');
+            return;
+          }
+          
+          try {
+            const response = await fetch('/admin/databases/add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ key, name, path })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              document.getElementById('newInstanceKey').value = '';
+              document.getElementById('newInstanceName').value = '';
+              document.getElementById('newInstancePath').value = '';
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error: ' + data.error);
+            }
+          } catch (err) {
+            alert('Error adding instance: ' + err.message);
+          }
+        }
+        
+        async function removeDatabaseInstance(key) {
+          const instance = window.databaseData.instances[key];
+          const deleteDir = confirm(\`Delete database instance "\${instance.name}"?\\n\\nAlso delete the data directory "\${instance.path}"?\\n(Click OK to delete directory too, Cancel to keep it)\`);
+          
+          if (deleteDir === null) return; // User cancelled
+          
+          try {
+            const response = await fetch('/admin/databases/remove', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ key, deleteDirectory: deleteDir })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error: ' + data.error);
+            }
+          } catch (err) {
+            alert('Error removing instance: ' + err.message);
           }
         }
         
