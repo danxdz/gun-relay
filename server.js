@@ -974,6 +974,7 @@ app.get('/', (req, res) => {
             localStorage.setItem('adminSession', adminSession);
             document.getElementById('adminLogin').style.display = 'none';
             document.getElementById('adminControls').style.display = 'block';
+            updateDatabaseDisplay();
             alert('Login successful!');
           } else {
             alert('Invalid password!');
@@ -1101,6 +1102,60 @@ app.get('/', (req, res) => {
             }
           } else {
             alert('Error: ' + (data.error || 'Unknown error'));
+          }
+        }
+        
+        async function switchDatabase() {
+          const selector = document.getElementById('databaseSelector');
+          const database = selector.value;
+          
+          if (!confirm(\`Switch to \${selector.options[selector.selectedIndex].text} database? This will disconnect all peers.\`)) {
+            return;
+          }
+          
+          try {
+            const response = await fetch('/admin/control/switch-database', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': sessionToken
+              },
+              body: JSON.stringify({ database })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              updateDatabaseDisplay();
+            } else {
+              alert('Failed to switch database: ' + (data.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Error switching database: ' + err.message);
+          }
+        }
+        
+        async function updateDatabaseDisplay() {
+          try {
+            const response = await fetch('/admin/databases', {
+              headers: {
+                'Authorization': sessionToken
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const selector = document.getElementById('databaseSelector');
+              const display = document.getElementById('currentDatabase');
+              
+              if (selector && display) {
+                selector.value = data.current;
+                const currentName = data.instances[data.current]?.name || 'Unknown';
+                display.textContent = \`Current: \${currentName}\`;
+              }
+            }
+          } catch (err) {
+            console.error('Error updating database display:', err);
           }
         }
         
