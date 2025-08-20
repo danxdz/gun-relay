@@ -54,7 +54,7 @@ const stats = {
 };
 
 // Database instances configuration
-const DATABASE_INSTANCES = {
+let DATABASE_INSTANCES = {
   prod: { name: 'Production', path: 'radata' },
   test: { name: 'Test', path: 'radata-test' },
   dev: { name: 'Development', path: 'radata-dev' },
@@ -1118,7 +1118,7 @@ app.get('/', (req, res) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': sessionToken
+                'X-Admin-Session': adminSession
               },
               body: JSON.stringify({ database })
             });
@@ -1139,7 +1139,7 @@ app.get('/', (req, res) => {
           try {
             const response = await fetch('/admin/databases', {
               headers: {
-                'Authorization': sessionToken
+                'X-Admin-Session': adminSession
               }
             });
             
