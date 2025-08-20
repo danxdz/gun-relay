@@ -1553,9 +1553,16 @@ const server = app.listen(PORT, () => {
 let gun;
 
 function initializeGun(databaseKey = 'prod') {
+  // WARNING: Gun.js cannot be reinitialized on the same server without crashing
+  // This function should only be called ONCE at startup
+  if (gun) {
+    console.warn('WARNING: Gun already initialized. Cannot reinitialize without server crash!');
+    return gun;
+  }
+  
   const dbConfig = DATABASE_INSTANCES[databaseKey] || DATABASE_INSTANCES.prod;
   
-  // Close existing Gun instance if exists
+  // Close existing Gun instance if exists (this will likely crash)
   if (gun && gun._.opt && gun._.opt.web) {
     try {
       // Disconnect all peers

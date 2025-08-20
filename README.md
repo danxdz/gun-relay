@@ -1,345 +1,148 @@
-# 🔫 Gun Relay Server for Whisperz
+# 🔫 Gun.js Relay Server
 
-Enhanced Gun.js relay server with admin controls, comprehensive monitoring, statistics, and security features for Whisperz P2P chat.
+A production-ready Gun.js relay server with admin dashboard, monitoring, and privacy controls.
 
 ## ✨ Features
 
-### 🎮 Admin Control Panel (v3.0)
-- **Web-based Admin Interface** - Control everything from your browser/mobile
-- **Server Controls** - Pause/resume server, maintenance mode
-- **Peer Management** - Kick or ban specific peers
-- **IP Management** - Ban/unban IP addresses
-- **Configuration Management** - Change settings without restart
-- **Real-time Log Viewer** - View logs filtered by level
-- **Password Management** - Change admin password from UI
-- **Session Management** - Secure login/logout with session tokens
-- **Mobile Optimized** - Fully responsive design
+### 🎯 Core
+- **Gun.js WebSocket Relay** - P2P relay for Gun.js applications
+- **Admin Dashboard** - Full control panel at `/`
+- **Real-time Stats** - Monitor connections, messages, bandwidth
+- **Privacy Mode** - Hide IPs and disable logging
+- **Database Management** - Add/remove database instances
 
-## ✨ Core Features
+### 🔒 Security
+- **Password Protected** - Admin panel with secure sessions
+- **Rate Limiting** - Prevent abuse (100 req/min default)
+- **Connection Limits** - Max concurrent connections (1000 default)
+- **IP Banning** - Block malicious IPs
+- **Auto-cleanup** - Remove inactive peers
 
-### Core Functionality
-- **Gun.js WebSocket Relay** - Enables P2P connections for mobile/NAT users
-- **Zero Knowledge** - Relay cannot decrypt E2E encrypted messages
-- **Auto-scaling** - Handles multiple concurrent connections efficiently
-- **Private Mode** - No public peers, complete privacy
+### 📊 Monitoring
+- **Health Check** - `/health` endpoint
+- **Statistics API** - `/api/stats` endpoint
+- **Metrics** - `/metrics` for Prometheus
+- **Live Logs** - Filter by INFO/WARN/ERROR
+- **Error Tracking** - Comprehensive error logging
 
-### Monitoring & Analytics
-- **📊 Real-time Dashboard** - Beautiful web interface with live stats
-- **📈 Performance Metrics** - Message rates, bandwidth usage, connection stats
-- **🔍 Error Tracking** - Comprehensive error logging and display
-- **💚 Health Checks** - `/health` endpoint for monitoring
-- **📉 Prometheus Metrics** - `/metrics` endpoint for external monitoring
+## 🚀 Quick Deploy
 
-### Security & Reliability
-- **🛡️ Rate Limiting** - Prevent abuse and DoS attacks
-- **🔒 Connection Limits** - Configurable max connections
-- **♻️ Auto-cleanup** - Removes inactive peers automatically
-- **⚡ Graceful Shutdown** - Proper connection handling on restart
-
-## 🚀 Quick Start
-
-### For Mobile Users (Recommended)
-1. **Deploy to Render.com** (FREE)
-   - Fork/use this repo
-   - Connect to Render.com
-   - Deploy in 2 minutes
-   - Access from anywhere on mobile
+### Deploy to Render (Recommended)
+1. Fork this repo
+2. Connect to [Render.com](https://render.com)
+3. Create new Web Service
+4. Set environment variable:
+   ```
+   ADMIN_PASSWORD=your_secure_password
+   ```
+5. Deploy! Access at `https://your-app.onrender.com`
 
 ### Local Development
 ```bash
-# Clone repository
-git clone https://github.com/danxdz/gun-relay
-cd gun-relay
-
-# Install dependencies
+# Install
 npm install
 
-# Start server
-npm start
-# Server runs at http://localhost:8765
+# Run with custom password
+ADMIN_PASSWORD=mypassword npm start
 
-# Development mode with auto-reload
-npm run dev
-
-# Test connection
-npm test
-
-# Monitor server
-npm run monitor
+# Access
+http://localhost:8765
 ```
 
-### Docker Deployment
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
+## 🎮 Admin Panel
 
-# With SSL/Nginx proxy
-docker-compose --profile with-ssl up -d
+Access the admin dashboard at `/` (root URL).
 
-# View logs
-docker-compose logs -f gun-relay
-```
+### Features:
+- **Server Controls** - Pause/resume, maintenance mode
+- **Peer Management** - View, kick, or ban peers
+- **Configuration** - Change settings live
+- **Privacy Controls** - Enable privacy mode
+- **Database Instances** - Manage multiple databases
+- **Password Change** - Update admin password
+- **Log Viewer** - Real-time filtered logs
 
-## 🌐 Deploy to Cloud
-
-### Deploy to Render.com (FREE)
-1. Push code to GitHub
-2. Go to [render.com](https://render.com)
-3. New > Web Service > Connect repo
-4. Auto-deploys with `render.yaml` config
-
-### Deploy to Railway ($5/month)
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Deploy
-railway login
-railway init
-railway up
-```
-
-### Deploy to Fly.io
-```bash
-# Install Fly CLI
-curl -L https://fly.io/install.sh | sh
-
-# Deploy
-fly launch
-fly deploy
-```
-
-## 📡 Connect from Whisperz
-
-Add your relay URL to the Whisperz app:
-
-```javascript
-// In browser console or app settings
-localStorage.setItem('GUN_CUSTOM_PEERS', 'https://your-relay.onrender.com/gun')
-
-// Multiple relays for redundancy
-localStorage.setItem('GUN_CUSTOM_PEERS', 
-  'https://relay1.com/gun,https://relay2.com/gun'
-)
-```
-
-## 📊 Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `/` | Web dashboard with real-time stats |
-| `/gun` | WebSocket endpoint for Gun.js |
-| `/health` | Health check (returns 200 if healthy) |
-| `/api/stats` | JSON API for statistics |
-| `/metrics` | Prometheus-compatible metrics |
+### Default Login:
+- Password: `admin123` (change immediately!)
 
 ## 🔧 Configuration
 
-Environment variables:
+### Environment Variables
 ```bash
-PORT=8765                 # Server port
-MAX_CONNECTIONS=1000      # Maximum concurrent connections
-NODE_ENV=production       # Environment (development/production)
-ADMIN_PASSWORD=admin123   # Admin panel password (CHANGE THIS!)
+PORT=8765                    # Server port
+ADMIN_PASSWORD=secure123     # Admin password (persists on Render)
+MAX_CONNECTIONS=1000         # Max concurrent connections
 ```
 
-### 🔐 Admin Panel Access
+### Database Instances
+The server supports multiple database instances (prod/test/dev/staging) but requires restart to switch. Each instance uses separate storage.
 
-1. Navigate to your server dashboard (e.g., `http://localhost:8765/`)
-2. Click on "Admin Control Panel"
-3. Enter the admin password (default: `admin123`)
-4. Access full control features:
-   - **Server Controls**: Pause/resume, maintenance mode, clear stats
-   - **Peer Management**: View, kick, or ban connected peers
-   - **IP Management**: Ban/unban specific IP addresses
-   - **Configuration**: Change settings without server restart
-   - **Password Management**: Change admin password directly from UI
-   - **Logs**: View real-time logs filtered by level
-5. **Logout**: Use the logout button (🚪) in top-right corner when done
+⚠️ **Note**: Database switching may cause issues. Use "Reset Database" instead for clearing data.
 
-**⚠️ IMPORTANT**: Change the default admin password in production!
+## 📱 Mobile Access
 
-### 🔑 Password Management
+The admin panel is fully mobile-optimized. Deploy to Render for access from anywhere.
 
-- **Change Password**: Go to Config tab → scroll to "Change Admin Password"
-- **Password Requirements**: Minimum 6 characters
-- **Persistence**: Password saved to `.admin_password` file (gitignored)
-- **Security**: All sessions invalidated after password change
+### Connect from Whisperz:
+```javascript
+// Add to Whisperz custom peers
+localStorage.setItem('GUN_CUSTOM_PEERS', 'https://your-app.onrender.com/gun')
+```
 
-## 📈 Monitoring
+## 🛡️ Privacy Features
 
-### Built-in Monitor
+### Privacy Mode
+- Disables all logging
+- Anonymizes IP addresses  
+- No data persistence
+- Zero-knowledge relay
+
+### Enable Privacy:
+1. Login to admin panel
+2. Go to Config tab
+3. Toggle "Privacy Mode"
+4. Or click "Quick Privacy Mode" button
+
+## 📈 API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/` | Admin dashboard |
+| `/gun` | Gun.js WebSocket relay |
+| `/health` | Health check |
+| `/api/stats` | JSON statistics |
+| `/metrics` | Prometheus metrics |
+
+## ⚠️ Important Notes
+
+1. **Set ADMIN_PASSWORD env variable** on Render for persistence
+2. **Database switching** requires server restart
+3. **Free Render tier** has ephemeral storage (use env vars)
+4. **Privacy mode** disables logging but not connections
+
+## 🔨 Development
+
+### Project Structure
+```
+├── server.js          # Main server file
+├── package.json       # Dependencies
+├── README.md         # Documentation
+└── .gitignore        # Git ignore rules
+```
+
+### Testing Connection
 ```bash
-# Monitor local server
-npm run monitor
-
-# Monitor remote server
-node monitor.js https://your-relay.com 5000
+npm run test  # Test relay connection
 ```
 
-### Dashboard Features
-- **Real-time Stats** - Auto-refreshes every 30 seconds
-- **Connection Tracking** - Active peers with details
-- **Performance Metrics** - Messages/sec, bandwidth usage
-- **System Resources** - Memory, CPU usage
-- **Error Log** - Recent errors with timestamps
-- **Visual Indicators** - Status lights, progress bars
+## 📝 License
 
-## 🧪 Testing
+MIT
 
-### Test Connection
-```bash
-# Test local server
-npm test
+## 🤝 Support
 
-# Test remote server
-node test-connection.js https://your-relay.com/gun
-```
-
-### Load Testing
-```bash
-# Install artillery
-npm install -g artillery
-
-# Run load test
-artillery quick --count 10 --num 100 ws://localhost:8765/gun
-```
-
-## 🛡️ Security
-
-### Rate Limiting
-- 100 requests per minute per IP
-- Configurable connection limits
-- Automatic cleanup of inactive peers
-
-### SSL/TLS Setup
-1. Place certificates in `./ssl/` directory
-2. Use nginx proxy configuration
-3. Deploy with `docker-compose --profile with-ssl up`
-
-### Best Practices
-- Always use HTTPS in production
-- Set appropriate connection limits
-- Monitor error logs regularly
-- Keep Gun.js updated
-
-## 📝 API Response Examples
-
-### Health Check
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "activeConnections": 42,
-  "recentErrors": 0
-}
-```
-
-### Stats API
-```json
-{
-  "uptime": 3600000,
-  "connections": {
-    "active": 42,
-    "total": 1337,
-    "peak": 100
-  },
-  "performance": {
-    "messages": 50000,
-    "bytesTransferred": 10485760,
-    "messageRate": 13.89
-  },
-  "system": {
-    "memory": {...},
-    "cpu": [0.5, 0.3, 0.2],
-    "nodeVersion": "v18.0.0"
-  }
-}
-```
-
-## 🐛 Troubleshooting
-
-### Relay Not Connecting
-- Check firewall rules for port 8765
-- Ensure WebSocket support
-- Verify CORS settings
-- Check server logs
-
-### High Memory Usage
-- Reduce `MAX_CONNECTIONS`
-- Enable cleanup interval
-- Monitor with `npm run monitor`
-
-### WebSocket Errors
-- Ensure using `wss://` for HTTPS
-- Check proxy configuration
-- Verify SSL certificates
-
-## 📚 Architecture
-
-```
-┌─────────────┐     WebSocket      ┌─────────────┐
-│   Client A  │◄──────────────────►│             │
-└─────────────┘                    │             │
-                                   │  Gun Relay  │
-┌─────────────┐     WebSocket      │   Server    │
-│   Client B  │◄──────────────────►│             │
-└─────────────┘                    │             │
-                                   └─────────────┘
-                                          │
-                                    ┌─────▼─────┐
-                                    │ Dashboard │
-                                    └───────────┘
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Open pull request
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
-## 🔗 Links
-
-- [Whisperz App](https://github.com/danxdz/Whisperz)
-- [Gun.js Documentation](https://gun.eco/docs)
-- [Deployment Guide](https://github.com/danxdz/Whisperz/blob/main/GUN_RELAY_SETUP.md)
-
-## 💡 Support
-
-For issues or questions:
-- Open an issue on GitHub
-- Check the error logs in dashboard
-- Use `npm run monitor` for debugging
-
-## 📋 Changelog
-
-### Version 3.0.0 (Latest)
-- ✅ Added comprehensive admin control panel
-- ✅ Web-based interface for server management
-- ✅ Password change functionality from UI
-- ✅ Login/logout session management
-- ✅ Peer kick/ban capabilities
-- ✅ Real-time configuration updates
-- ✅ Enhanced mobile responsiveness
-
-### Version 2.0.0
-- ✅ Added monitoring dashboard
-- ✅ Statistics tracking
-- ✅ Health check endpoints
-- ✅ Docker support
-- ✅ Rate limiting
-
-### Version 1.0.0
-- ✅ Basic Gun.js relay server
-- ✅ WebSocket support
-- ✅ Initial setup
+For issues or questions about the Gun relay, please open an issue on GitHub.
 
 ---
 
-**Version:** 3.0.0 | **Last Updated:** January 2024
+Built for [Whisperz](https://github.com/danxdz/whisperz) P2P chat
