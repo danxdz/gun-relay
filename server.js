@@ -18,13 +18,24 @@ const PORT = process.env.PORT || 8765;
 const MAX_CONNECTIONS = process.env.MAX_CONNECTIONS || 1000;
 
 // Load saved password or use default
+// Priority: 1. Environment variable, 2. Saved file, 3. Default
 let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-try {
-  if (fs.existsSync('.admin_password')) {
-    ADMIN_PASSWORD = fs.readFileSync('.admin_password', 'utf8').trim();
+
+// Try to load from file if no env var is set
+if (process.env.ADMIN_PASSWORD === undefined) {
+  try {
+    if (fs.existsSync('.admin_password')) {
+      const savedPassword = fs.readFileSync('.admin_password', 'utf8').trim();
+      if (savedPassword) {
+        ADMIN_PASSWORD = savedPassword;
+        console.log('Loaded saved admin password from file');
+      }
+    }
+  } catch (err) {
+    console.log('Using default admin password (set ADMIN_PASSWORD env var to persist)');
   }
-} catch (err) {
-  console.log('Using default admin password');
+} else {
+  console.log('Using admin password from environment variable');
 }
 
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
