@@ -901,13 +901,34 @@ app.get('/', (req, res) => {
               <h3>Database Instance</h3>
               <div style="margin: 10px 0;">
                 <select id="databaseSelector" style="padding: 8px; margin-right: 10px;">
-                  <option value="prod">Production</option>
-                  <option value="test">Test</option>
-                  <option value="dev">Development</option>
-                  <option value="staging">Staging</option>
+                  <!-- Will be populated dynamically -->
                 </select>
-                <span id="currentDatabase" style="margin-right: 10px;">Current: Production</span>
-                <button onclick="switchDatabase()" class="success">🔄 Switch Database</button>
+                <span id="currentDatabase" style="margin-right: 10px;">Current: Loading...</span>
+                <button onclick="switchDatabase()" class="success">🔄 Switch</button>
+                <button onclick="toggleDatabaseManager()" style="margin-left: 10px;">⚙️ Manage</button>
+              </div>
+              
+              <!-- Database Manager Panel -->
+              <div id="databaseManager" style="display: none; margin-top: 10px; padding: 15px; background: #2a2a2a; border-radius: 5px;">
+                <h4>📊 Database Management</h4>
+                
+                <div style="margin: 15px 0;">
+                  <h5>Current Instances:</h5>
+                  <div id="instancesList" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <div style="margin: 15px 0; padding: 10px; background: #1a1a1a; border-radius: 5px;">
+                  <h5>➕ Add New Instance:</h5>
+                  <input type="text" id="newInstanceKey" placeholder="Key (e.g., backup)" style="width: 120px; margin: 5px;">
+                  <input type="text" id="newInstanceName" placeholder="Name (e.g., Backup DB)" style="width: 150px; margin: 5px;">
+                  <input type="text" id="newInstancePath" placeholder="Path (e.g., radata-backup)" style="width: 150px; margin: 5px;">
+                  <button onclick="addDatabaseInstance()" class="success">Add Instance</button>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                  <h5>📁 Existing Data Directories:</h5>
+                  <div id="existingDirs" style="font-family: monospace; color: #888;"></div>
+                </div>
               </div>
               
               <h3>IP Management</h3>
