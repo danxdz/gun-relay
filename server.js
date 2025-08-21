@@ -66,11 +66,15 @@ const stats = {
 
 // Database instances configuration
 let DATABASE_INSTANCES = {
-  prod: { name: 'Production', path: 'radata' },
-  test: { name: 'Test', path: 'radata-test' },
-  dev: { name: 'Development', path: 'radata-dev' },
-  staging: { name: 'Staging', path: 'radata-staging' }
+  prod: { name: 'Production', path: 'radata', namespace: 'prod' },
+  test: { name: 'Test', path: 'radata-test', namespace: 'test' },
+  dev: { name: 'Development', path: 'radata-dev', namespace: 'dev' },
+  staging: { name: 'Staging', path: 'radata-staging', namespace: 'staging' }
 };
+
+// Add reset tracking
+let RESET_TIMESTAMPS = {};
+let DATA_NAMESPACE = 'prod'; // Current namespace for data isolation
 
 // Configuration that can be changed at runtime
 let config = {
@@ -83,8 +87,10 @@ let config = {
   // Privacy settings - simplified
   privacyMode: false,
   anonymizeIPs: false,
-  // Database instance
-  currentDatabase: 'prod'
+  currentDatabase: 'prod',
+  // New: Block peer sync after reset
+  blockPeerSync: false,
+  resetTimestamp: 0
 };
 
 // Logger
@@ -298,7 +304,7 @@ app.post("/admin/databases/reset", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
-  const { key, createNew = true } = req.body;
+  const { key, createNew = true, blockSync = true } = req.body;
   
   if (!key || !DATABASE_INSTANCES[key]) {
     return res.status(400).json({ error: "Instance not found" });
@@ -310,10 +316,19 @@ app.post("/admin/databases/reset", (req, res) => {
   try {
     // If this is the current database, we need to handle it carefully
     if (key === config.currentDatabase) {
+      // Set reset timestamp and block peer sync
+      const resetTime = Date.now();
+      RESET_TIMESTAMPS[key] = resetTime;
+      config.resetTimestamp = resetTime;
+      config.blockPeerSync = blockSync;
+      
+      // Update namespace to isolate data
+      DATA_NAMESPACE = `${dbConfig.namespace}_${resetTime}`;
+      
       // Pause the server
       stats.serverPaused = true;
       
-      // Disconnect all peers
+      // Disconnect all peers to force them to reconnect with new namespace
       for (const [peerId, peer] of stats.peerMap.entries()) {
         if (peer.wire) {
           peer.wire.close();
@@ -328,6 +343,20 @@ app.post("/admin/databases/reset", (req, res) => {
       stats.errors = [];
       stats.connectionHistory = [];
       stats.logs = [];
+      
+      // Ban all current peer IPs temporarily (5 minutes) to prevent immediate resync
+      if (blockSync) {
+        const tempBanDuration = 5 * 60 * 1000; // 5 minutes
+        for (const [peerId, peer] of stats.peerMap.entries()) {
+          if (peer.ip && peer.ip !== 'unknown') {
+            stats.bannedIPs.add(peer.ip);
+            setTimeout(() => {
+              stats.bannedIPs.delete(peer.ip);
+            }, tempBanDuration);
+          }
+        }
+        log("INFO", `Temporarily banned all peer IPs for 5 minutes to prevent resync`);
+      }
     }
     
     // Delete the database directory
@@ -347,8 +376,9 @@ app.post("/admin/databases/reset", (req, res) => {
       log("WARNING", "Current database was reset. Server restart required for full reset.");
       res.json({ 
         success: true, 
-        message: `Database ${dbConfig.name} has been reset. Server restart required for complete reset.`,
-        requiresRestart: true
+        message: `Database ${dbConfig.name} has been reset. Server restart required. ${blockSync ? 'Peers temporarily blocked from syncing.' : ''}`,
+        requiresRestart: true,
+        namespace: DATA_NAMESPACE
       });
       
       // Schedule server restart after response
