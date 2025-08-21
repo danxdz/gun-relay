@@ -1,10 +1,17 @@
 # Gun.js Relay Server
 
-## Version 3.1.0 - Database Reset Features Added!
+## Version 3.2.0 - Complete Database Management System!
 
-A high-performance, production-ready relay server for Gun.js with comprehensive monitoring, admin controls, and database management.
+A high-performance, production-ready relay server for Gun.js with comprehensive monitoring, admin controls, and advanced database management.
 
-### 🆕 New in v3.1.0
+### 🆕 New in v3.2.0
+- **Complete Reset System**: Reset both server database and all Whisperz clients with one click
+- **Database Snapshots**: Create backups and restore previous states
+- **Instance Management**: Persistent instance tracking across server restarts
+- **Simplified Admin UI**: Clean, modern database management interface
+- **File-Based Instance Storage**: Reliable instance persistence using `current-instance.json`
+
+### Previous v3.1.0
 - **Database Reset Functionality**: Hard reset and clear database options
 - **Reset Utility Script**: Command-line tool for database management
 - **Enhanced Admin UI**: Database management panel with reset controls
@@ -37,9 +44,33 @@ npm start
 npm run dev
 ```
 
-### Database Reset Options
+### Database Management Options
 
-#### Using the Reset Utility
+#### Complete Reset (Server + Clients)
+The most powerful feature - resets everything with one click:
+
+1. **Via Admin Panel**:
+   - Navigate to `/` (root URL) and login
+   - Find the **Database Management** section
+   - Click **"🔄 Complete Reset (Server + Clients)"**
+   - Enter new instance name (or auto-generate)
+   - Option to create backup snapshot
+   - Confirm and wait for server restart
+
+2. **What Happens**:
+   - Server database is completely cleared
+   - Instance name changes (e.g., "production" → "v2")
+   - All Whisperz clients detect the change
+   - Clients automatically clear their local data
+   - Everyone starts fresh!
+
+#### Database Snapshots
+Create and restore database backups:
+- **📸 Create Snapshot**: Save current state before changes
+- **📁 Manage Snapshots**: View, restore, or delete snapshots
+- Automatic backup option before reset
+
+#### Manual Reset Options
 ```bash
 # Interactive mode
 npm run reset
@@ -50,12 +81,6 @@ node reset-database.js --db prod --force
 # List all databases
 node reset-database.js --list
 ```
-
-#### Via Admin Panel
-1. Navigate to `/` (root URL)
-2. Login with admin password
-3. Click "⚙️ Manage" next to database selector
-4. Use "🧹 Clear Current Database" or "⚠️ Hard Reset Selected Database"
 
 See [DATABASE_RESET_GUIDE.md](DATABASE_RESET_GUIDE.md) for detailed instructions.
 

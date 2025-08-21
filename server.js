@@ -555,11 +555,16 @@ app.get("/admin/whisperz/instance", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
+  // First try to get from file (most reliable)
+  const fileInstance = simpleReset.loadInstance();
+  
+  // Also check Gun to see what's published
   gun.get('_whisperz_system').get('config').once((data) => {
     res.json({ 
-      instance: data?.instance || 'not_set',
-      timestamp: data?.timestamp,
-      setBy: data?.setBy
+      instance: fileInstance || data?.instance || 'production',
+      timestamp: data?.timestamp || Date.now(),
+      setBy: data?.setBy || 'system',
+      source: fileInstance ? 'file' : 'gun'
     });
   });
 });
@@ -2396,13 +2401,25 @@ setTimeout(() => {
     const savedInstance = simpleReset.loadInstance();
     log("INFO", `Loading instance from file: ${savedInstance}`);
     
-    // Write it to Gun for clients to read
-    gun.get('_whisperz_system').get('config').put({
-      instance: savedInstance,
-      timestamp: Date.now(),
-      resetBy: 'system',
-      message: 'Server started'
-    });
+    // If no saved instance, create default
+    if (!fs.existsSync('current-instance.json')) {
+      simpleReset.saveInstance('production');
+    }
+    
+    // Write it to Gun for clients to read - multiple times to ensure it sticks
+    const publishInstance = () => {
+      gun.get('_whisperz_system').get('config').put({
+        instance: savedInstance,
+        timestamp: Date.now(),
+        resetBy: 'system',
+        message: 'Server started'
+      });
+    };
+    
+    // Publish immediately and again after a delay
+    publishInstance();
+    setTimeout(publishInstance, 1000);
+    setTimeout(publishInstance, 3000);
   }
 }, 2000);
 
