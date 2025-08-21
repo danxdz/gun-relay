@@ -371,6 +371,20 @@ app.post("/admin/databases/reset", (req, res) => {
       log("INFO", `Created fresh database directory: ${dirPath}`);
     }
     
+    // Send reset signal to all connected clients (for Whisperz auto-reset)
+    if (gun && key === config.currentDatabase) {
+      try {
+        gun.get('_whisperz_system').get('reset').put({
+          timestamp: Date.now(),
+          database: key,
+          message: 'Database reset by administrator'
+        });
+        log("INFO", "Sent reset signal to all clients");
+      } catch (err) {
+        log("WARN", "Could not send reset signal to clients", err);
+      }
+    }
+    
     // If this was the current database, we need to restart the server
     if (key === config.currentDatabase) {
       log("WARNING", "Current database was reset. Server restart required for full reset.");
@@ -456,6 +470,18 @@ app.post("/admin/databases/clear", (req, res) => {
     stats.totalBytes = 0;
     stats.errors = [];
     stats.logs = [];
+    
+    // Send reset signal to all connected clients (for Whisperz auto-reset)
+    try {
+      gun.get('_whisperz_system').get('reset').put({
+        timestamp: Date.now(),
+        database: currentDb,
+        message: 'Database cleared by administrator'
+      });
+      log("INFO", "Sent reset signal to all clients");
+    } catch (err) {
+      log("WARN", "Could not send reset signal to clients", err);
+    }
     
     log("WARNING", "Database cleared. Server restart required for complete reset.");
     
