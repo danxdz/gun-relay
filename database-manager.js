@@ -150,7 +150,22 @@ class DatabaseManager {
     };
 
     try {
-      // Step 1: Clear server database
+      // Step 1: Set new instance for Whisperz clients BEFORE clearing
+      // This ensures the data is written before we wipe the database
+      if (gun) {
+        console.log('Setting new instance:', newInstance);
+        gun.get('_whisperz_system').get('config').put({
+          instance: newInstance,
+          timestamp: Date.now(),
+          resetBy: 'admin'
+        });
+        
+        // Give it a moment to write
+        await new Promise(resolve => setTimeout(resolve, 500));
+        resetData.clientsNotified = true;
+      }
+
+      // Step 2: Clear server database
       const currentPath = 'radata';
       if (fs.existsSync(currentPath)) {
         fs.rmSync(currentPath, { recursive: true, force: true });
@@ -158,17 +173,20 @@ class DatabaseManager {
       }
       resetData.serverCleared = true;
 
-      // Step 2: Set new instance for Whisperz clients
+      // Step 3: Write the instance again after clearing
+      // This ensures it persists after the reset
       if (gun) {
+        // Wait a bit for Gun to reinitialize with empty DB
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         gun.get('_whisperz_system').get('config').put({
           instance: newInstance,
           timestamp: Date.now(),
           resetBy: 'admin'
         });
-        resetData.clientsNotified = true;
       }
 
-      // Step 3: Update current instance
+      // Step 4: Update current instance
       this.currentDatabase = newInstance;
 
       return resetData;

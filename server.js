@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const DatabaseManager = require('./database-manager');
+const SimpleReset = require('./simple-reset');
 // Note: helmet is optional, server works without it
 let helmet;
 try {
@@ -79,6 +80,7 @@ let DATA_NAMESPACE = 'prod'; // Current namespace for data isolation
 
 // Initialize database manager
 const dbManager = new DatabaseManager();
+const simpleReset = new SimpleReset();
 
 // Configuration that can be changed at runtime
 let config = {
@@ -569,6 +571,7 @@ app.post("/admin/database/complete-reset", async (req, res) => {
   }
   
   const { newInstance, createSnapshot } = req.body;
+  const finalInstance = newInstance || `v${Date.now()}`;
   
   try {
     // Create snapshot before reset if requested
@@ -580,13 +583,16 @@ app.post("/admin/database/complete-reset", async (req, res) => {
       );
     }
     
-    // Perform complete reset
-    const result = await dbManager.completeReset(gun, newInstance || `v${Date.now()}`);
+    log("INFO", `Starting complete reset with instance: ${finalInstance}`);
+    
+    // Use the simple reset approach
+    const result = await simpleReset.reset(finalInstance);
     
     res.json({
       success: true,
       ...result,
       snapshotId: snapshotId,
+      newInstance: finalInstance,
       message: 'Complete reset successful. Server will restart.'
     });
     
@@ -2382,6 +2388,23 @@ function initializeGun(databaseKey = 'prod') {
 
 // Initialize with default database
 initializeGun(config.currentDatabase);
+
+// Set initial instance from saved file or default
+setTimeout(() => {
+  if (gun) {
+    // Load instance from file
+    const savedInstance = simpleReset.loadInstance();
+    log("INFO", `Loading instance from file: ${savedInstance}`);
+    
+    // Write it to Gun for clients to read
+    gun.get('_whisperz_system').get('config').put({
+      instance: savedInstance,
+      timestamp: Date.now(),
+      resetBy: 'system',
+      message: 'Server started'
+    });
+  }
+}, 2000);
 
 // Setup Gun event handlers
 function setupGunHandlers() {
