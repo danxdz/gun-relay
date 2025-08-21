@@ -292,6 +292,165 @@ app.post("/admin/databases/remove", (req, res) => {
   res.json({ success: true, message: `Removed instance` });
 });
 
+// Hard reset database - clears all data and restarts
+app.post("/admin/databases/reset", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { key, createNew = true } = req.body;
+  
+  if (!key || !DATABASE_INSTANCES[key]) {
+    return res.status(400).json({ error: "Instance not found" });
+  }
+  
+  const dbConfig = DATABASE_INSTANCES[key];
+  const dirPath = dbConfig.path;
+  
+  try {
+    // If this is the current database, we need to handle it carefully
+    if (key === config.currentDatabase) {
+      // Pause the server
+      stats.serverPaused = true;
+      
+      // Disconnect all peers
+      for (const [peerId, peer] of stats.peerMap.entries()) {
+        if (peer.wire) {
+          peer.wire.close();
+        }
+      }
+      stats.peerMap.clear();
+      stats.activeConnections = 0;
+      
+      // Clear in-memory stats and data
+      stats.totalMessages = 0;
+      stats.totalBytes = 0;
+      stats.errors = [];
+      stats.connectionHistory = [];
+      stats.logs = [];
+    }
+    
+    // Delete the database directory
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+      log("INFO", `Deleted database directory: ${dirPath}`);
+    }
+    
+    // Recreate empty directory if requested
+    if (createNew) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      log("INFO", `Created fresh database directory: ${dirPath}`);
+    }
+    
+    // If this was the current database, we need to restart the server
+    if (key === config.currentDatabase) {
+      log("WARNING", "Current database was reset. Server restart required for full reset.");
+      res.json({ 
+        success: true, 
+        message: `Database ${dbConfig.name} has been reset. Server restart required for complete reset.`,
+        requiresRestart: true
+      });
+      
+      // Schedule server restart after response
+      setTimeout(() => {
+        log("INFO", "Restarting server after database reset...");
+        process.exit(0); // Exit cleanly - process manager should restart
+      }, 1000);
+    } else {
+      res.json({ 
+        success: true, 
+        message: `Database ${dbConfig.name} has been reset successfully.`,
+        requiresRestart: false
+      });
+    }
+    
+  } catch (err) {
+    log("ERROR", `Failed to reset database: ${key}`, err);
+    
+    // Resume server if it was paused
+    if (key === config.currentDatabase) {
+      stats.serverPaused = false;
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to reset database", 
+      details: err.message 
+    });
+  }
+});
+
+// Clear all data from current database without switching
+app.post("/admin/databases/clear", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const currentDb = config.currentDatabase;
+  const dbConfig = DATABASE_INSTANCES[currentDb];
+  
+  if (!dbConfig) {
+    return res.status(400).json({ error: "Current database configuration not found" });
+  }
+  
+  try {
+    // Pause the server
+    stats.serverPaused = true;
+    
+    // Disconnect all peers
+    for (const [peerId, peer] of stats.peerMap.entries()) {
+      if (peer.wire) {
+        peer.wire.close();
+      }
+    }
+    stats.peerMap.clear();
+    stats.activeConnections = 0;
+    
+    // Clear the database directory
+    const dirPath = dbConfig.path;
+    if (fs.existsSync(dirPath)) {
+      // Delete all files in the directory but keep the directory
+      const files = fs.readdirSync(dirPath);
+      for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        if (fs.statSync(filePath).isDirectory()) {
+          fs.rmSync(filePath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(filePath);
+        }
+      }
+      log("INFO", `Cleared all data from: ${dirPath}`);
+    }
+    
+    // Clear in-memory stats
+    stats.totalMessages = 0;
+    stats.totalBytes = 0;
+    stats.errors = [];
+    stats.logs = [];
+    
+    log("WARNING", "Database cleared. Server restart required for complete reset.");
+    
+    res.json({ 
+      success: true, 
+      message: `All data cleared from ${dbConfig.name}. Server restart required.`,
+      requiresRestart: true
+    });
+    
+    // Schedule server restart
+    setTimeout(() => {
+      log("INFO", "Restarting server after database clear...");
+      process.exit(0);
+    }, 1000);
+    
+  } catch (err) {
+    log("ERROR", `Failed to clear database: ${currentDb}`, err);
+    stats.serverPaused = false;
+    res.status(500).json({ 
+      error: "Failed to clear database", 
+      details: err.message 
+    });
+  }
+});
+
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   
@@ -936,6 +1095,19 @@ app.get('/', (req, res) => {
                   <button onclick="addDatabaseInstance()" class="success">Add Instance</button>
                 </div>
                 
+                <div style="margin: 15px 0; padding: 10px; background: #1a1a1a; border-radius: 5px;">
+                  <h5>🔄 Database Reset Options:</h5>
+                  <div style="margin: 10px 0;">
+                    <button onclick="clearCurrentDatabase()" class="warning" style="margin: 5px;">
+                      🧹 Clear Current Database
+                    </button>
+                    <button onclick="hardResetDatabase()" class="danger" style="margin: 5px;">
+                      ⚠️ Hard Reset Selected Database
+                    </button>
+                  </div>
+                  <small style="color: #ff6b6b;">⚠️ Warning: These actions will delete all data and require server restart!</small>
+                </div>
+                
                 <div style="margin: 15px 0;">
                   <h5>📁 Existing Data Directories:</h5>
                   <div id="existingDirs" style="font-family: monospace; color: #888;"></div>
@@ -1405,6 +1577,90 @@ app.get('/', (req, res) => {
             }
           } catch (err) {
             alert('Error removing instance: ' + err.message);
+          }
+        }
+        
+        async function clearCurrentDatabase() {
+          if (!window.databaseData) {
+            alert('Database information not loaded.');
+            return;
+          }
+          
+          const currentDb = window.databaseData.current;
+          const dbConfig = window.databaseData.instances[currentDb];
+          if (!dbConfig) {
+            alert('Current database configuration not found.');
+            return;
+          }
+
+          if (!confirm(\`⚠️ WARNING: Clear all data from the "\${dbConfig.name}" database?\\n\\nThis will:\\n• Delete all stored data\\n• Disconnect all peers\\n• Require server restart\\n\\nThis action cannot be undone!\`)) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/admin/databases/clear', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              }
+            });
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              if (data.requiresRestart) {
+                alert('The server will restart in a moment. Please refresh the page in a few seconds.');
+              }
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error clearing database: ' + (data.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Error clearing database: ' + err.message);
+          }
+        }
+
+        async function hardResetDatabase() {
+          if (!window.databaseData) {
+            alert('Database information not loaded.');
+            return;
+          }
+          
+          const selector = document.getElementById('databaseSelector');
+          const selectedDb = selector ? selector.value : window.databaseData.current;
+          const dbConfig = window.databaseData.instances[selectedDb];
+          if (!dbConfig) {
+            alert('Database configuration not found.');
+            return;
+          }
+
+          if (!confirm(\`⚠️ WARNING: Hard reset the "\${dbConfig.name}" database?\\n\\nThis will:\\n• Delete the entire database directory\\n• Remove all stored data permanently\\n• Create a fresh empty database\\n• Require server restart if it's the current database\\n\\nThis action cannot be undone!\`)) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/admin/databases/reset', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ key: selectedDb, createNew: true })
+            });
+            const data = await response.json();
+            if (data.success) {
+              alert(data.message);
+              if (data.requiresRestart) {
+                alert('The server will restart in a moment. Please refresh the page in a few seconds.');
+              }
+              await updateDatabaseDisplay();
+              updateDatabaseManager();
+            } else {
+              alert('Error hard resetting database: ' + (data.error || 'Unknown error'));
+            }
+          } catch (err) {
+            alert('Error hard resetting database: ' + err.message);
           }
         }
         
