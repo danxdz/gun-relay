@@ -1,148 +1,181 @@
-# 🔫 Gun.js Relay Server
+# Gun.js Relay Server
 
-A production-ready Gun.js relay server with admin dashboard, monitoring, and privacy controls.
+## Version 3.1.0 - Database Reset Features Added!
 
-## ✨ Features
+A high-performance, production-ready relay server for Gun.js with comprehensive monitoring, admin controls, and database management.
 
-### 🎯 Core
-- **Gun.js WebSocket Relay** - P2P relay for Gun.js applications
-- **Admin Dashboard** - Full control panel at `/`
-- **Real-time Stats** - Monitor connections, messages, bandwidth
-- **Privacy Mode** - Hide IPs and disable logging
-- **Database Management** - Add/remove database instances
+### 🆕 New in v3.1.0
+- **Database Reset Functionality**: Hard reset and clear database options
+- **Reset Utility Script**: Command-line tool for database management
+- **Enhanced Admin UI**: Database management panel with reset controls
+- **Multiple Reset Methods**: Web UI, API endpoints, and CLI utility
 
-### 🔒 Security
-- **Password Protected** - Admin panel with secure sessions
-- **Rate Limiting** - Prevent abuse (100 req/min default)
-- **Connection Limits** - Max concurrent connections (1000 default)
-- **IP Banning** - Block malicious IPs
-- **Auto-cleanup** - Remove inactive peers
+## Features
 
-### 📊 Monitoring
-- **Health Check** - `/health` endpoint
-- **Statistics API** - `/api/stats` endpoint
-- **Metrics** - `/metrics` for Prometheus
-- **Live Logs** - Filter by INFO/WARN/ERROR
-- **Error Tracking** - Comprehensive error logging
+- 🚀 **High Performance**: Handles thousands of concurrent connections
+- 📊 **Real-time Dashboard**: Monitor connections, messages, and system stats
+- 🔐 **Admin Panel**: Protected admin interface with authentication
+- 🗄️ **Database Management**: Switch between multiple database instances
+- 🔄 **Database Reset**: Clear or hard reset databases with automatic server restart
+- 🛡️ **Security**: Rate limiting, IP banning, and privacy controls
+- 📝 **Comprehensive Logging**: Track errors, connections, and system events
+- 🏥 **Health Monitoring**: Built-in health check endpoint
+- 🐳 **Docker Ready**: Includes Dockerfile for containerized deployment
 
-## 🚀 Quick Deploy
-
-### Deploy to Render (Recommended)
-1. Fork this repo
-2. Connect to [Render.com](https://render.com)
-3. Create new Web Service
-4. Set environment variable:
-   ```
-   ADMIN_PASSWORD=your_secure_password
-   ```
-5. Deploy! Access at `https://your-app.onrender.com`
+## Quick Start
 
 ### Local Development
+
 ```bash
-# Install
+# Install dependencies
 npm install
 
-# Run with custom password
-ADMIN_PASSWORD=mypassword npm start
+# Start the server
+npm start
 
-# Access
-http://localhost:8765
+# Or use development mode with auto-reload
+npm run dev
 ```
 
-## 🎮 Admin Panel
+### Database Reset Options
 
-Access the admin dashboard at `/` (root URL).
+#### Using the Reset Utility
+```bash
+# Interactive mode
+npm run reset
 
-### Features:
-- **Server Controls** - Pause/resume, maintenance mode
-- **Peer Management** - View, kick, or ban peers
-- **Configuration** - Change settings live
-- **Privacy Controls** - Enable privacy mode
-- **Database Instances** - Manage multiple databases
-- **Password Change** - Update admin password
-- **Log Viewer** - Real-time filtered logs
+# Direct reset
+node reset-database.js --db prod --force
 
-### Default Login:
-- Password: `admin123` (change immediately!)
+# List all databases
+node reset-database.js --list
+```
 
-## 🔧 Configuration
+#### Via Admin Panel
+1. Navigate to `/` (root URL)
+2. Login with admin password
+3. Click "⚙️ Manage" next to database selector
+4. Use "🧹 Clear Current Database" or "⚠️ Hard Reset Selected Database"
+
+See [DATABASE_RESET_GUIDE.md](DATABASE_RESET_GUIDE.md) for detailed instructions.
+
+### Docker Deployment
+
+```bash
+# Build the image
+docker build -t gun-relay .
+
+# Run the container
+docker run -p 8765:8765 -e ADMIN_PASSWORD=your-secure-password gun-relay
+```
+
+### Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+## Configuration
 
 ### Environment Variables
+
+- `PORT` - Server port (default: 8765)
+- `ADMIN_PASSWORD` - Admin panel password (default: admin123)
+- `MAX_CONNECTIONS` - Maximum concurrent connections (default: 10000)
+- `RATE_LIMIT_WINDOW` - Rate limit time window in ms (default: 60000)
+- `MAX_REQUESTS_PER_WINDOW` - Max requests per window (default: 100)
+
+## Admin Panel
+
+Access the admin panel at `http://your-server:port/`
+
+Default password: `admin123` (change this in production!)
+
+### Admin Features
+
+- **Real-time Statistics**: Active connections, message throughput, bandwidth usage
+- **Connection Management**: View and manage active peers
+- **Database Control**: Switch between database instances, reset databases
+- **IP Management**: Ban/unban IP addresses
+- **Privacy Controls**: Enable privacy mode, anonymize IPs
+- **System Monitoring**: CPU, memory, and performance metrics
+- **Error Tracking**: View recent errors and logs
+
+## API Endpoints
+
+### Public Endpoints
+- `GET /` - Admin dashboard
+- `GET /health` - Health check endpoint
+- `GET /gun` - Gun.js WebSocket endpoint
+
+### Admin Endpoints (Requires Authentication)
+- `POST /admin/login` - Admin authentication
+- `POST /admin/action` - Execute admin actions
+- `GET /admin/stats` - Get server statistics
+- `GET /admin/databases` - List database instances
+- `POST /admin/databases/add` - Add new database instance
+- `POST /admin/databases/remove` - Remove database instance
+- `POST /admin/databases/reset` - Hard reset database
+- `POST /admin/databases/clear` - Clear current database
+
+## Database Management
+
+The server supports multiple database instances:
+- **Production** (`radata`)
+- **Test** (`radata-test`)
+- **Development** (`radata-dev`)
+- **Staging** (`radata-staging`)
+
+You can add custom instances through the admin panel or API.
+
+## Security
+
+- Rate limiting per IP address
+- IP banning capabilities
+- Session-based admin authentication
+- Optional privacy mode
+- Helmet.js security headers (when available)
+
+## Monitoring
+
+Use the included monitoring script:
+
 ```bash
-PORT=8765                    # Server port
-ADMIN_PASSWORD=secure123     # Admin password (persists on Render)
-MAX_CONNECTIONS=1000         # Max concurrent connections
+npm run monitor
 ```
 
-### Database Instances
-The server supports multiple database instances (prod/test/dev/staging) but requires restart to switch. Each instance uses separate storage.
+This will continuously check the server health and display statistics.
 
-⚠️ **Note**: Database switching may cause issues. Use "Reset Database" instead for clearing data.
+## Testing
 
-## 📱 Mobile Access
-
-The admin panel is fully mobile-optimized. Deploy to Render for access from anywhere.
-
-### Connect from Whisperz:
-```javascript
-// Add to Whisperz custom peers
-localStorage.setItem('GUN_CUSTOM_PEERS', 'https://your-app.onrender.com/gun')
-```
-
-## 🛡️ Privacy Features
-
-### Privacy Mode
-- Disables all logging
-- Anonymizes IP addresses  
-- No data persistence
-- Zero-knowledge relay
-
-### Enable Privacy:
-1. Login to admin panel
-2. Go to Config tab
-3. Toggle "Privacy Mode"
-4. Or click "Quick Privacy Mode" button
-
-## 📈 API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `/` | Admin dashboard |
-| `/gun` | Gun.js WebSocket relay |
-| `/health` | Health check |
-| `/api/stats` | JSON statistics |
-| `/metrics` | Prometheus metrics |
-
-## ⚠️ Important Notes
-
-1. **Set ADMIN_PASSWORD env variable** on Render for persistence
-2. **Database switching** requires server restart
-3. **Free Render tier** has ephemeral storage (use env vars)
-4. **Privacy mode** disables logging but not connections
-
-## 🔨 Development
-
-### Project Structure
-```
-├── server.js          # Main server file
-├── package.json       # Dependencies
-├── README.md         # Documentation
-└── .gitignore        # Git ignore rules
-```
-
-### Testing Connection
 ```bash
-npm run test  # Test relay connection
+# Run connection test
+npm test
 ```
 
-## 📝 License
+## Troubleshooting
+
+### Database Issues
+- Use the reset utility for database problems
+- Check [DATABASE_RESET_GUIDE.md](DATABASE_RESET_GUIDE.md) for detailed help
+
+### Connection Issues
+- Check firewall settings
+- Verify Gun.js client configuration
+- Monitor rate limiting in admin panel
+
+### Performance Issues
+- Monitor active connections in dashboard
+- Check system resources (CPU/Memory)
+- Consider increasing `MAX_CONNECTIONS`
+- Use database reset if performance degrades
+
+## License
 
 MIT
 
-## 🤝 Support
+## Support
 
-For issues or questions about the Gun relay, please open an issue on GitHub.
+For issues or questions, please open an issue on GitHub.
 
 ---
 
-Built for [Whisperz](https://github.com/danxdz/whisperz) P2P chat
+**Note**: Always change the default admin password in production environments!
