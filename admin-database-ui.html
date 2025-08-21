@@ -1,0 +1,289 @@
+<!-- Enhanced Database Management Panel -->
+<div id="databasePanel" style="padding: 20px; background: #1a1a1a; border-radius: 10px; margin: 20px 0;">
+  <h2 style="color: #4ade80; margin-bottom: 20px;">📊 Database Management</h2>
+  
+  <!-- Current Status -->
+  <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <h3>Current Status</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+      <div>
+        <label style="color: #888;">Instance Name:</label>
+        <strong id="currentInstance" style="color: #4ade80;">Loading...</strong>
+      </div>
+      <div>
+        <label style="color: #888;">Database Size:</label>
+        <strong id="dbSize">Calculating...</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <h3>Quick Actions</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+      <button onclick="createSnapshot()" class="success" style="padding: 10px 20px;">
+        📸 Create Snapshot
+      </button>
+      <button onclick="showCompleteReset()" class="danger" style="padding: 10px 20px;">
+        🔄 Complete Reset (Server + Clients)
+      </button>
+      <button onclick="showSnapshots()" style="padding: 10px 20px;">
+        📁 Manage Snapshots
+      </button>
+    </div>
+  </div>
+
+  <!-- Complete Reset Dialog -->
+  <div id="resetDialog" style="display: none; background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #ef4444;">
+    <h3 style="color: #ef4444;">⚠️ Complete System Reset</h3>
+    <p style="margin: 15px 0; color: #fbbf24;">
+      This will completely reset both the server database and all connected Whisperz clients.
+    </p>
+    
+    <div style="margin: 20px 0;">
+      <label style="display: block; margin-bottom: 10px;">New Instance Name:</label>
+      <input type="text" id="newInstanceName" placeholder="e.g., production-v2" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 5px; color: white;">
+      <small style="color: #888;">Leave empty to auto-generate (v[timestamp])</small>
+    </div>
+    
+    <div style="margin: 20px 0;">
+      <label style="display: flex; align-items: center; cursor: pointer;">
+        <input type="checkbox" id="createBackup" checked style="margin-right: 10px;">
+        Create backup snapshot before reset
+      </label>
+    </div>
+    
+    <div style="background: #1a1a1a; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <strong>What will happen:</strong>
+      <ul style="margin: 10px 0; padding-left: 20px; color: #fbbf24;">
+        <li>Server database will be completely cleared</li>
+        <li>All Whisperz clients will detect the change</li>
+        <li>Clients will clear their local data automatically</li>
+        <li>Server will restart (takes ~5 seconds)</li>
+        <li>All users will need to log in again</li>
+      </ul>
+    </div>
+    
+    <div style="display: flex; gap: 10px;">
+      <button onclick="executeCompleteReset()" class="danger" style="padding: 10px 20px;">
+        ⚠️ Confirm Reset
+      </button>
+      <button onclick="hideResetDialog()" style="padding: 10px 20px;">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- Snapshots Manager -->
+  <div id="snapshotsDialog" style="display: none; background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+    <h3>📁 Database Snapshots</h3>
+    <div id="snapshotsList" style="margin: 20px 0; max-height: 300px; overflow-y: auto;">
+      <!-- Snapshots will be loaded here -->
+    </div>
+    <button onclick="hideSnapshots()" style="padding: 10px 20px;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+// Database management functions
+let dbSnapshots = [];
+
+async function loadDatabaseStatus() {
+  try {
+    // Get current instance
+    const instanceRes = await fetch('/admin/whisperz/instance', {
+      headers: { 'X-Admin-Session': adminSession }
+    });
+    const instanceData = await instanceRes.json();
+    document.getElementById('currentInstance').textContent = instanceData.instance || 'not_set';
+    
+    // Get snapshots
+    const snapshotsRes = await fetch('/admin/database/snapshots', {
+      headers: { 'X-Admin-Session': adminSession }
+    });
+    const snapshotsData = await snapshotsRes.json();
+    dbSnapshots = snapshotsData.snapshots || [];
+    
+    // Calculate current DB size (approximate)
+    document.getElementById('dbSize').textContent = 'N/A';
+  } catch (err) {
+    console.error('Error loading database status:', err);
+  }
+}
+
+function showCompleteReset() {
+  document.getElementById('resetDialog').style.display = 'block';
+  document.getElementById('snapshotsDialog').style.display = 'none';
+}
+
+function hideResetDialog() {
+  document.getElementById('resetDialog').style.display = 'none';
+}
+
+async function executeCompleteReset() {
+  const newInstance = document.getElementById('newInstanceName').value.trim();
+  const createBackup = document.getElementById('createBackup').checked;
+  
+  if (!confirm('Are you absolutely sure? This cannot be undone!')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/admin/database/complete-reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Session': adminSession
+      },
+      body: JSON.stringify({
+        newInstance: newInstance || null,
+        createSnapshot: createBackup
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      alert(`Reset successful!\n\nNew instance: ${result.newInstance}\nServer will restart in a moment.`);
+      hideResetDialog();
+    } else {
+      alert('Reset failed: ' + (result.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error during reset: ' + err.message);
+  }
+}
+
+async function createSnapshot() {
+  const name = prompt('Snapshot name:', `Snapshot ${new Date().toLocaleString()}`);
+  if (!name) return;
+  
+  const description = prompt('Description (optional):');
+  
+  try {
+    const response = await fetch('/admin/database/snapshot', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Session': adminSession
+      },
+      body: JSON.stringify({ name, description })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      alert('Snapshot created successfully!');
+      loadDatabaseStatus();
+    } else {
+      alert('Failed to create snapshot: ' + (result.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error creating snapshot: ' + err.message);
+  }
+}
+
+function showSnapshots() {
+  document.getElementById('snapshotsDialog').style.display = 'block';
+  document.getElementById('resetDialog').style.display = 'none';
+  renderSnapshots();
+}
+
+function hideSnapshots() {
+  document.getElementById('snapshotsDialog').style.display = 'none';
+}
+
+function renderSnapshots() {
+  const container = document.getElementById('snapshotsList');
+  
+  if (dbSnapshots.length === 0) {
+    container.innerHTML = '<p style="color: #888;">No snapshots available</p>';
+    return;
+  }
+  
+  container.innerHTML = dbSnapshots.map(snapshot => `
+    <div style="background: #1a1a1a; padding: 15px; margin: 10px 0; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+          <strong>${snapshot.name}</strong>
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            ${new Date(snapshot.created).toLocaleString()}
+          </div>
+          ${snapshot.description ? `<div style="color: #aaa; margin-top: 5px;">${snapshot.description}</div>` : ''}
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="restoreSnapshot('${snapshot.id}')" class="warning" style="padding: 5px 10px;">
+            Restore
+          </button>
+          <button onclick="deleteSnapshot('${snapshot.id}')" class="danger" style="padding: 5px 10px;">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function restoreSnapshot(snapshotId) {
+  const snapshot = dbSnapshots.find(s => s.id === snapshotId);
+  if (!snapshot) return;
+  
+  if (!confirm(`Restore from snapshot "${snapshot.name}"?\n\nThis will replace the current database and restart the server.`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/admin/database/restore', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Session': adminSession
+      },
+      body: JSON.stringify({ snapshotId })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      alert('Database restored! Server will restart.');
+    } else {
+      alert('Restore failed: ' + (result.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error restoring snapshot: ' + err.message);
+  }
+}
+
+async function deleteSnapshot(snapshotId) {
+  const snapshot = dbSnapshots.find(s => s.id === snapshotId);
+  if (!snapshot) return;
+  
+  if (!confirm(`Delete snapshot "${snapshot.name}"?`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/database/snapshot/${snapshotId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Admin-Session': adminSession
+      }
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      alert('Snapshot deleted!');
+      loadDatabaseStatus();
+      renderSnapshots();
+    } else {
+      alert('Delete failed: ' + (result.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error deleting snapshot: ' + err.message);
+  }
+}
+
+// Load status on page load
+if (typeof adminSession !== 'undefined') {
+  loadDatabaseStatus();
+}
+</script>

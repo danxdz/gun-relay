@@ -5,6 +5,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const DatabaseManager = require('./database-manager');
 // Note: helmet is optional, server works without it
 let helmet;
 try {
@@ -75,6 +76,9 @@ let DATABASE_INSTANCES = {
 // Add reset tracking
 let RESET_TIMESTAMPS = {};
 let DATA_NAMESPACE = 'prod'; // Current namespace for data isolation
+
+// Initialize database manager
+const dbManager = new DatabaseManager();
 
 // Configuration that can be changed at runtime
 let config = {
@@ -556,6 +560,136 @@ app.get("/admin/whisperz/instance", (req, res) => {
       setBy: data?.setBy
     });
   });
+});
+
+// Complete reset - server and clients
+app.post("/admin/database/complete-reset", async (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { newInstance, createSnapshot } = req.body;
+  
+  try {
+    // Create snapshot before reset if requested
+    let snapshotId = null;
+    if (createSnapshot) {
+      snapshotId = dbManager.createSnapshot(
+        `Before Reset - ${new Date().toLocaleString()}`,
+        'Automatic snapshot before complete reset'
+      );
+    }
+    
+    // Perform complete reset
+    const result = await dbManager.completeReset(gun, newInstance || `v${Date.now()}`);
+    
+    res.json({
+      success: true,
+      ...result,
+      snapshotId: snapshotId,
+      message: 'Complete reset successful. Server will restart.'
+    });
+    
+    // Schedule server restart
+    setTimeout(() => {
+      log("INFO", "Restarting server after complete reset...");
+      process.exit(0);
+    }, 1000);
+    
+  } catch (err) {
+    log("ERROR", "Complete reset failed", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create database snapshot
+app.post("/admin/database/snapshot", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { name, description } = req.body;
+  
+  try {
+    const snapshotId = dbManager.createSnapshot(name || 'Manual Snapshot', description);
+    
+    if (snapshotId) {
+      res.json({
+        success: true,
+        snapshotId: snapshotId,
+        message: 'Snapshot created successfully'
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to create snapshot' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List snapshots
+app.get("/admin/database/snapshots", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  try {
+    const snapshots = dbManager.listSnapshots();
+    res.json({
+      snapshots: snapshots,
+      current: dbManager.currentDatabase
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Restore from snapshot
+app.post("/admin/database/restore", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { snapshotId } = req.body;
+  
+  try {
+    dbManager.restoreSnapshot(snapshotId);
+    
+    res.json({
+      success: true,
+      message: 'Database restored. Server will restart.'
+    });
+    
+    // Schedule server restart
+    setTimeout(() => {
+      log("INFO", "Restarting server after restore...");
+      process.exit(0);
+    }, 1000);
+    
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete snapshot
+app.delete("/admin/database/snapshot/:id", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { id } = req.params;
+  
+  try {
+    const success = dbManager.deleteSnapshot(id);
+    
+    if (success) {
+      res.json({ success: true, message: 'Snapshot deleted' });
+    } else {
+      res.status(404).json({ error: 'Snapshot not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/admin/login', (req, res) => {
