@@ -507,6 +507,57 @@ app.post("/admin/databases/clear", (req, res) => {
   }
 });
 
+// Set Whisperz instance - forces all clients to reset
+app.post("/admin/whisperz/set-instance", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const { instance } = req.body;
+  
+  // If no instance provided, generate one based on timestamp
+  const newInstance = instance || `v${Date.now()}`;
+  
+  try {
+    // Set the instance in Gun - this will trigger all Whisperz clients to reset
+    gun.get('_whisperz_system').get('config').put({
+      instance: newInstance,
+      timestamp: Date.now(),
+      setBy: 'admin'
+    });
+    
+    log("INFO", `Set Whisperz instance to: ${newInstance} - all clients will reset`);
+    
+    res.json({ 
+      success: true, 
+      message: `Whisperz instance set to ${newInstance}. All clients will reset.`,
+      instance: newInstance
+    });
+    
+  } catch (err) {
+    log("ERROR", `Failed to set Whisperz instance`, err);
+    res.status(500).json({ 
+      error: "Failed to set instance", 
+      details: err.message 
+    });
+  }
+});
+
+// Get current Whisperz instance
+app.get("/admin/whisperz/instance", (req, res) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  gun.get('_whisperz_system').get('config').once((data) => {
+    res.json({ 
+      instance: data?.instance || 'not_set',
+      timestamp: data?.timestamp,
+      setBy: data?.setBy
+    });
+  });
+});
+
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   
@@ -1160,8 +1211,12 @@ app.get('/', (req, res) => {
                     <button onclick="hardResetDatabase()" class="danger" style="margin: 5px;">
                       ⚠️ Hard Reset Selected Database
                     </button>
+                    <button onclick="resetWhisperzClients()" class="success" style="margin: 5px;">
+                      📱 Reset All Whisperz Clients
+                    </button>
                   </div>
-                  <small style="color: #ff6b6b;">⚠️ Warning: These actions will delete all data and require server restart!</small>
+                  <small style="color: #ff6b6b;">⚠️ Warning: Database actions will delete all data and require server restart!</small>
+                  <small style="color: #4ade80; display: block; margin-top: 5px;">📱 Whisperz Reset: Changes instance name, forcing all clients to clear data</small>
                 </div>
                 
                 <div style="margin: 15px 0;">
@@ -1717,6 +1772,48 @@ app.get('/', (req, res) => {
             }
           } catch (err) {
             alert('Error hard resetting database: ' + err.message);
+          }
+        }
+        
+        async function resetWhisperzClients() {
+          // First, get current instance
+          try {
+            const response = await fetch('/admin/whisperz/instance', {
+              headers: {
+                'X-Admin-Session': adminSession
+              }
+            });
+            const data = await response.json();
+            
+            const currentInstance = data.instance || 'not_set';
+            
+            if (!confirm(\`Reset all Whisperz clients?\\n\\nCurrent instance: \${currentInstance}\\n\\nThis will:\\n• Change the instance name\\n• Force ALL Whisperz clients to clear their data\\n• Clients will reload automatically\\n\\nThis does NOT affect server data.\`)) {
+              return;
+            }
+            
+            // Generate new instance name
+            const newInstance = prompt('Enter new instance name (or leave empty for auto-generate):', \`v\${Date.now()}\`);
+            
+            // Set new instance
+            const setResponse = await fetch('/admin/whisperz/set-instance', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Session': adminSession
+              },
+              body: JSON.stringify({ 
+                instance: newInstance || \`v\${Date.now()}\` 
+              })
+            });
+            
+            const result = await setResponse.json();
+            if (result.success) {
+              alert(\`Success! Instance changed to: \${result.instance}\\n\\nAll Whisperz clients will now reset.\`);
+            } else {
+              alert('Error: ' + (result.error || 'Failed to set instance'));
+            }
+          } catch (err) {
+            alert('Error resetting Whisperz clients: ' + err.message);
           }
         }
         
