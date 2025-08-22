@@ -497,11 +497,17 @@ app.post("/admin/databases/clear", (req, res) => {
       requiresRestart: true
     });
     
-    // Schedule server restart
-    setTimeout(() => {
-      log("INFO", "Restarting server after database clear...");
-      process.exit(0);
-    }, 1000);
+    // On Render, don't exit - just notify that manual restart is needed
+    if (process.env.RENDER) {
+      log("INFO", "Database cleared. Manual restart required on Render.");
+      // Don't exit on Render
+    } else {
+      // Schedule server restart for local development
+      setTimeout(() => {
+        log("INFO", "Restarting server after database clear...");
+        process.exit(0);
+      }, 1000);
+    }
     
   } catch (err) {
     log("ERROR", `Failed to clear database: ${currentDb}`, err);
@@ -593,19 +599,28 @@ app.post("/admin/database/complete-reset", async (req, res) => {
     // Use the simple reset approach
     const result = await simpleReset.reset(finalInstance);
     
+    const isRender = process.env.RENDER === 'true';
+    
     res.json({
       success: true,
       ...result,
       snapshotId: snapshotId,
       newInstance: finalInstance,
-      message: 'Complete reset successful. Server will restart.'
+      message: isRender ? 
+        'Complete reset successful. Please restart the service manually in Render dashboard.' :
+        'Complete reset successful. Server will restart.'
     });
     
-    // Schedule server restart
-    setTimeout(() => {
-      log("INFO", "Restarting server after complete reset...");
-      process.exit(0);
-    }, 1000);
+    // Handle restart based on environment
+    if (!isRender) {
+      // Schedule server restart for local development
+      setTimeout(() => {
+        log("INFO", "Restarting server after complete reset...");
+        process.exit(0);
+      }, 1000);
+    } else {
+      log("INFO", "Running on Render - manual restart required");
+    }
     
   } catch (err) {
     log("ERROR", "Complete reset failed", err);
@@ -973,6 +988,15 @@ app.get('/admin/logs', (req, res) => {
   }
   
   res.json(logs.slice(0, limit));
+});
+
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: Date.now()
+  });
 });
 
 // Enhanced dashboard with admin panel
@@ -2327,8 +2351,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Start server
-const server = app.listen(PORT, () => {
+// Start server - bind to all interfaces for Render
+const server = app.listen(PORT, '0.0.0.0', () => {
   log('INFO', `Gun Relay Server Started on port ${PORT}`);
   console.log(`
 ╔════════════════════════════════════════════╗
