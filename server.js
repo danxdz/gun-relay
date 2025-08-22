@@ -1001,7 +1001,7 @@ app.get('/', (req, res) => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
           color: #fff;
           min-height: 100vh;
           padding: 20px;
@@ -1012,9 +1012,10 @@ app.get('/', (req, res) => {
         }
         h1 {
           font-size: 2.5em;
-          margin-bottom: 20px;
+          margin-bottom: 30px;
           text-align: center;
-          text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+          color: #fff;
         }
         .grid {
           display: grid;
@@ -1023,11 +1024,12 @@ app.get('/', (req, res) => {
           margin-bottom: 30px;
         }
         .card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border-radius: 15px;
-          padding: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 12px;
+          padding: 24px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          color: #333;
         }
         .card h2 {
           font-size: 1.2em;
@@ -1070,18 +1072,20 @@ app.get('/', (req, res) => {
           margin: 20px 0;
         }
         button {
-          background: rgba(255, 255, 255, 0.2);
-          border: 2px solid rgba(255, 255, 255, 0.3);
+          background: #2a5298;
+          border: none;
           color: white;
           padding: 10px 20px;
           border-radius: 8px;
           cursor: pointer;
           font-size: 1em;
           transition: all 0.3s;
+          font-weight: 500;
         }
         button:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: #3366bb;
           transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(42, 82, 152, 0.3);
         }
         button:disabled {
           opacity: 0.5;
