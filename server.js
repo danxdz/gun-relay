@@ -12,15 +12,20 @@ const cookieParser = require('cookie-parser'); // SECURITY: cookie sessions
 const DatabaseManager = require('./database-manager');
 const SimpleReset = require('./simple-reset');
 
+
 let helmet;
 try {
   helmet = require('helmet');
 } catch (e) {
-  console.log('Helmet not installed, continuing without security headers');
+  console.warn('[SECURITY] Helmet not installed! Install helmet for HTTP security headers.');
 }
 
 const app = express();
 const PORT = process.env.PORT || 8765;
+
+// --- Constants ---
+const MAX_LOGS = 500;
+const MAX_ERRORS = 100;
 const MAX_CONNECTIONS = process.env.MAX_CONNECTIONS || 1000;
 
 // ---------- ADMIN PASSWORD LOADING & MIGRATION ----------
@@ -145,11 +150,11 @@ function log(level, message, data = {}) {
   if (config.privacyMode) return;
   const entry = { timestamp: new Date().toISOString(), level, message, data };
   stats.logs.unshift(entry);
-  if (stats.logs.length > 500) stats.logs.pop();
+  if (stats.logs.length > MAX_LOGS) stats.logs.pop();
   if (config.enableLogging) {
-    // redact any tokens in data for safety when printing
+    // redact any tokens, sessions, passwords in data for safety when printing
     const safeData = JSON.parse(JSON.stringify(data, (k, v) => {
-      if (k && (k.toLowerCase().includes('token') || k.toLowerCase().includes('session'))) return '[REDACTED]';
+      if (k && (k.toLowerCase().includes('token') || k.toLowerCase().includes('session') || k.toLowerCase().includes('password'))) return '[REDACTED]';
       return v;
     }));
     console.log(`[${level}] ${message}`, safeData);
@@ -167,12 +172,13 @@ function getDisplayIP(ip) {
 }
 
 class ErrorTracker {
-  constructor(maxErrors = 100) { this.maxErrors = maxErrors; }
+  constructor(maxErrors = MAX_ERRORS) { this.maxErrors = maxErrors; }
   track(error, context = '') {
     const errorEntry = { timestamp: new Date().toISOString(), message: error.message || error, stack: error.stack, context };
     stats.errors.unshift(errorEntry);
     if (stats.errors.length > this.maxErrors) stats.errors.pop();
     log('ERROR', `${context} - ${error.message || error}`);
+    // TODO: Optionally send alert/email on repeated/critical errors
   }
 }
 const errorTracker = new ErrorTracker();
@@ -243,12 +249,16 @@ if (helmet) {
   }));
 }
 
-// CORS allowlist
+
+// CORS allowlist with fallback for dev
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s=>s.trim()).filter(Boolean);
 app.use(cors({
   origin: function(origin, cb) {
     if (!origin) return cb(null, true); // allow server-to-server requests
-    if (allowedOrigins.length === 0) return cb(new Error('CORS disabled'));
+    if (allowedOrigins.length === 0) {
+      if (process.env.NODE_ENV !== 'production') return cb(null, true); // allow all in dev
+      return cb(new Error('CORS disabled'));
+    }
     if (allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error('CORS not allowed'));
   },
@@ -401,12 +411,29 @@ app.post("/admin/databases/remove", (req, res) => {
 // You should update those handlers to call safeResolveDbPath before any fs.rmSync / fs.unlinkSync calls.
 // Example usage in reset/clear code: const dirPath = safeResolveDbPath(dbConfig.path);
 
+
+// Health endpoint (minimal, no internal metrics)
 app.get('/health', (req, res) => {
-  // minimal health response to avoid leaking internal metrics publicly
   res.status(200).json({ status: 'ok' });
 });
 
+// Version endpoint for debugging/deployment
+app.get('/version', (req, res) => {
+  // You can automate this with git commit hash or package.json version
+  let version = null;
+  try {
+    version = require('./package.json').version;
+  } catch (e) {}
+  res.json({
+    version: version || 'unknown',
+    date: new Date().toISOString(),
+    commit: process.env.GIT_COMMIT || null
+  });
+});
+
 // Start server
+
+// TODO: Add graceful shutdown and signal handling for production
 app.listen(PORT, () => {
   console.log(`Gun relay server listening on ${PORT}`);
 });
