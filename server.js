@@ -278,20 +278,160 @@ app.use(Gun.serve);
 app.get('/', (req, res) => {
   if (!isAuthenticated(req)) {
     return res.send(`
-      <!doctype html><html><head><meta charset="utf-8"><title>Admin Login</title></head>
-      <body style="font-family:system-ui,Segoe UI,Roboto;">
-        <h2>Gun Relay Admin — Login</h2>
-        <form method="post" action="/admin/login" style="max-width:400px">
-          <input name="password" type="password" placeholder="Admin password" required style="width:100%;padding:8px;margin:8px 0"/>
-          <button type="submit" style="padding:8px 12px">Login</button>
-        </form>
-        <p style="color:#666">Admin UI is protected. Provide credentials to continue.</p>
-      </body></html>
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Admin Login</title>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+          }
+          .login-container {
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+          }
+          h2 {
+            color: #4ade80;
+            margin-bottom: 30px;
+            text-align: center;
+          }
+          input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+          }
+          input:focus {
+            outline: none;
+            border-color: #4ade80;
+          }
+          button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #4ade80;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+          }
+          button:hover {
+            background: #22c55e;
+          }
+          .error {
+            color: #ef4444;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+          }
+          .info {
+            color: #888;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="login-container">
+          <h2>🔐 Gun Relay Admin</h2>
+          <form id="loginForm" onsubmit="handleLogin(event)">
+            <input 
+              id="password" 
+              name="password" 
+              type="password" 
+              placeholder="Enter admin password" 
+              required 
+              autocomplete="current-password"
+            />
+            <button type="submit">Login</button>
+            <div id="error" class="error"></div>
+          </form>
+          <p class="info">Admin UI is protected. Provide credentials to continue.</p>
+        </div>
+        
+        <script>
+          async function handleLogin(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            const button = event.target.querySelector('button');
+            
+            button.disabled = true;
+            button.textContent = 'Logging in...';
+            errorDiv.style.display = 'none';
+            
+            try {
+              const response = await fetch('/admin/login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password })
+              });
+              
+              const data = await response.json();
+              
+              if (data.success) {
+                window.location.href = '/';
+              } else {
+                errorDiv.textContent = data.error || 'Invalid password';
+                errorDiv.style.display = 'block';
+                button.disabled = false;
+                button.textContent = 'Login';
+              }
+            } catch (err) {
+              errorDiv.textContent = 'Connection error. Please try again.';
+              errorDiv.style.display = 'block';
+              button.disabled = false;
+              button.textContent = 'Login';
+            }
+          }
+        </script>
+      </body>
+      </html>
     `);
   }
 
   // If authenticated, return admin dashboard with database management
-  const adminHTML = fs.readFileSync(path.join(__dirname, 'admin-database-ui.html'), 'utf8');
+  let adminHTML = '';
+  try {
+    adminHTML = fs.readFileSync(path.join(__dirname, 'admin-database-ui.html'), 'utf8');
+  } catch (err) {
+    log('WARN', 'Could not load admin-database-ui.html, using embedded UI');
+    adminHTML = `
+      <div id="databasePanel" style="padding: 20px; background: #1a1a1a; border-radius: 10px; margin: 20px 0;">
+        <h2 style="color: #4ade80;">📊 Database Management</h2>
+        <p style="color: #fbbf24;">Note: Full UI not loaded. Basic functions available.</p>
+        <div style="margin-top: 20px;">
+          <button onclick="location.reload()" style="padding: 10px 20px; background: #4ade80; color: #000; border: none; border-radius: 5px; cursor: pointer;">
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -350,6 +490,9 @@ app.get('/', (req, res) => {
       </style>
     </head>
     <body>
+      <!-- Notification Container (needed by admin-database-ui.html) -->
+      <div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;"></div>
+      
       <button class="logout-btn" onclick="logout()">Logout</button>
       <div class="container">
         <h1>🚀 Gun Relay Admin Dashboard</h1>
