@@ -1,3 +1,6 @@
+<!-- Notification System -->
+<div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;"></div>
+
 <!-- Enhanced Database Management Panel -->
 <div id="databasePanel" style="padding: 20px; background: #1a1a1a; border-radius: 10px; margin: 20px 0;">
   <h2 style="color: #4ade80; margin-bottom: 20px;">📊 Database Management</h2>
@@ -86,7 +89,163 @@
   </div>
 </div>
 
+<style>
+  .notification {
+    background: #2a2a2a;
+    border-left: 4px solid #4ade80;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .notification.success {
+    border-left-color: #4ade80;
+  }
+  
+  .notification.error {
+    border-left-color: #ef4444;
+  }
+  
+  .notification.warning {
+    border-left-color: #fbbf24;
+  }
+  
+  .notification.info {
+    border-left-color: #60a5fa;
+  }
+  
+  .notification-icon {
+    font-size: 20px;
+  }
+  
+  .notification-content {
+    flex: 1;
+  }
+  
+  .notification-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: white;
+  }
+  
+  .notification-message {
+    color: #ccc;
+    font-size: 14px;
+  }
+  
+  .notification-close {
+    cursor: pointer;
+    color: #888;
+    font-size: 20px;
+    line-height: 1;
+    padding: 0 5px;
+    transition: color 0.2s;
+  }
+  
+  .notification-close:hover {
+    color: white;
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+</style>
+
 <script>
+// Notification System
+function showNotification(message, type = 'info', duration = 5000) {
+  const container = document.getElementById('notificationContainer');
+  if (!container) return;
+  
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+  
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  
+  // Parse message - could be string or object with title and message
+  let title = '';
+  let msg = message;
+  if (typeof message === 'object' && message.title) {
+    title = message.title;
+    msg = message.message || '';
+  } else if (message.includes('\n')) {
+    const parts = message.split('\n');
+    title = parts[0];
+    msg = parts.slice(1).join('\n');
+  }
+  
+  notification.innerHTML = `
+    <span class="notification-icon">${icons[type]}</span>
+    <div class="notification-content">
+      ${title ? `<div class="notification-title">${title}</div>` : ''}
+      <div class="notification-message">${msg}</div>
+    </div>
+    <span class="notification-close" onclick="this.parentElement.remove()">×</span>
+  `;
+  
+  container.appendChild(notification);
+  
+  // Auto-remove after duration
+  if (duration > 0) {
+    setTimeout(() => {
+      notification.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 300);
+    }, duration);
+  }
+  
+  return notification;
+}
+
+// Helper functions for different notification types
+function notifySuccess(message, duration = 4000) {
+  return showNotification(message, 'success', duration);
+}
+
+function notifyError(message, duration = 6000) {
+  return showNotification(message, 'error', duration);
+}
+
+function notifyWarning(message, duration = 5000) {
+  return showNotification(message, 'warning', duration);
+}
+
+function notifyInfo(message, duration = 4000) {
+  return showNotification(message, 'info', duration);
+}
+
 // Database management functions
 let dbSnapshots = [];
 
@@ -145,13 +304,18 @@ async function executeCompleteReset() {
     
     const result = await response.json();
     if (result.success) {
-      alert(`Reset successful!\n\nNew instance: ${result.newInstance}\nServer will restart in a moment.`);
+      notifySuccess({
+        title: 'Reset Successful!',
+        message: `New instance: ${result.newInstance}. Server will restart in a moment.`
+      });
       hideResetDialog();
+      // Reload status after a delay
+      setTimeout(() => loadDatabaseStatus(), 3000);
     } else {
-      alert('Reset failed: ' + (result.error || 'Unknown error'));
+      notifyError('Reset failed: ' + (result.error || 'Unknown error'));
     }
   } catch (err) {
-    alert('Error during reset: ' + err.message);
+    notifyError('Error during reset: ' + err.message);
   }
 }
 
@@ -173,13 +337,13 @@ async function createSnapshot() {
     
     const result = await response.json();
     if (result.success) {
-      alert('Snapshot created successfully!');
+      notifySuccess('Snapshot created successfully!');
       loadDatabaseStatus();
     } else {
-      alert('Failed to create snapshot: ' + (result.error || 'Unknown error'));
+      notifyError('Failed to create snapshot: ' + (result.error || 'Unknown error'));
     }
   } catch (err) {
-    alert('Error creating snapshot: ' + err.message);
+    notifyError('Error creating snapshot: ' + err.message);
   }
 }
 
@@ -244,12 +408,13 @@ async function restoreSnapshot(snapshotId) {
     
     const result = await response.json();
     if (result.success) {
-      alert('Database restored! Server will restart.');
+      notifySuccess('Database restored! Server will restart.');
+      setTimeout(() => loadDatabaseStatus(), 3000);
     } else {
-      alert('Restore failed: ' + (result.error || 'Unknown error'));
+      notifyError('Restore failed: ' + (result.error || 'Unknown error'));
     }
   } catch (err) {
-    alert('Error restoring snapshot: ' + err.message);
+    notifyError('Error restoring snapshot: ' + err.message);
   }
 }
 
@@ -271,14 +436,14 @@ async function deleteSnapshot(snapshotId) {
     
     const result = await response.json();
     if (result.success) {
-      alert('Snapshot deleted!');
+      notifySuccess('Snapshot deleted!');
       loadDatabaseStatus();
       renderSnapshots();
     } else {
-      alert('Delete failed: ' + (result.error || 'Unknown error'));
+      notifyError('Delete failed: ' + (result.error || 'Unknown error'));
     }
   } catch (err) {
-    alert('Error deleting snapshot: ' + err.message);
+    notifyError('Error deleting snapshot: ' + err.message);
   }
 }
 

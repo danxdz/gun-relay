@@ -44,27 +44,32 @@ class SimpleReset {
 
   // Clear the Gun database
   clearDatabase() {
-    const dbPath = 'radata';
-    try {
-      if (fs.existsSync(dbPath)) {
-        // Remove all files in the directory
-        const files = fs.readdirSync(dbPath);
-        for (const file of files) {
-          const filePath = path.join(dbPath, file);
-          if (fs.statSync(filePath).isDirectory()) {
-            fs.rmSync(filePath, { recursive: true, force: true });
-          } else {
-            fs.unlinkSync(filePath);
+    // Check multiple possible database paths
+    const dbPaths = ['radata', 'radata_base', process.env.DATA_BASE].filter(Boolean);
+    let cleared = false;
+    
+    for (const dbPath of dbPaths) {
+      try {
+        if (fs.existsSync(dbPath)) {
+          // Remove all files in the directory
+          const files = fs.readdirSync(dbPath);
+          for (const file of files) {
+            const filePath = path.join(dbPath, file);
+            if (fs.statSync(filePath).isDirectory()) {
+              fs.rmSync(filePath, { recursive: true, force: true });
+            } else {
+              fs.unlinkSync(filePath);
+            }
           }
+          console.log(`Database cleared successfully at: ${dbPath}`);
+          cleared = true;
         }
-        console.log('Database cleared successfully');
-        return true;
+      } catch (err) {
+        console.error(`Error clearing database at ${dbPath}:`, err);
       }
-    } catch (err) {
-      console.error('Error clearing database:', err);
-      return false;
     }
-    return true;
+    
+    return cleared;
   }
 
   // Perform reset

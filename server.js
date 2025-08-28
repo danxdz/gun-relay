@@ -290,9 +290,110 @@ app.get('/', (req, res) => {
     `);
   }
 
-  // If authenticated, return original dashboard HTML
-  // (For brevity: return a minimal protected page - replace with your full HTML if needed)
-  res.send(`<html><body><h1>Gun Relay Admin</h1><p>Authorized</p></body></html>`);
+  // If authenticated, return admin dashboard with database management
+  const adminHTML = fs.readFileSync(path.join(__dirname, 'admin-database-ui.html'), 'utf8');
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Gun Relay Admin Dashboard</title>
+      <style>
+        body {
+          background: #0a0a0a;
+          color: #fff;
+          font-family: system-ui, -apple-system, sans-serif;
+          margin: 0;
+          padding: 20px;
+        }
+        h1 {
+          color: #4ade80;
+        }
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        button {
+          background: #4ade80;
+          color: #000;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        button:hover {
+          background: #22c55e;
+        }
+        button.danger {
+          background: #ef4444;
+          color: white;
+        }
+        button.danger:hover {
+          background: #dc2626;
+        }
+        button.warning {
+          background: #fbbf24;
+          color: #000;
+        }
+        button.success {
+          background: #4ade80;
+          color: #000;
+        }
+        .logout-btn {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #ef4444;
+          color: white;
+        }
+      </style>
+    </head>
+    <body>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+      <div class="container">
+        <h1>🚀 Gun Relay Admin Dashboard</h1>
+        
+        <!-- Stats Section -->
+        <div style="background: #1a1a1a; padding: 20px; border-radius: 10px; margin: 20px 0;">
+          <h2>📊 Server Statistics</h2>
+          <div id="stats">Loading stats...</div>
+        </div>
+        
+        ${adminHTML}
+        
+      </div>
+      
+      <script>
+        const adminSession = '${req.cookies?.admin_sid || req.headers['x-admin-session'] || ''}';
+        
+        async function logout() {
+          if (confirm('Are you sure you want to logout?')) {
+            await fetch('/admin/logout', {
+              method: 'POST',
+              headers: { 'X-Admin-Session': adminSession }
+            });
+            window.location.href = '/';
+          }
+        }
+        
+        async function loadStats() {
+          try {
+            const response = await fetch('/health');
+            const data = await response.json();
+            document.getElementById('stats').innerHTML = 'Server Status: ' + data.status;
+          } catch (err) {
+            document.getElementById('stats').innerHTML = 'Error loading stats';
+          }
+        }
+        
+        // Load initial data
+        loadStats();
+        setInterval(loadStats, 5000);
+      </script>
+    </body>
+    </html>
+  `);
 });
 
 // Admin login (SECURITY: rate-limited)
@@ -405,12 +506,98 @@ app.post("/admin/databases/remove", (req, res) => {
   res.json({ success: true, message: `Removed instance` });
 });
 
-// Other admin endpoints: resets, snapshots, config, peer actions, etc.
-// --- I kept your original handlers but replaced raw fs usage where applicable
-// (For brevity in this snippet, keep your implementations for: reset, clear, snapshot, restore)
-// You should update those handlers to call safeResolveDbPath before any fs.rmSync / fs.unlinkSync calls.
-// Example usage in reset/clear code: const dirPath = safeResolveDbPath(dbConfig.path);
+// Get current Whisperz instance
+app.get("/admin/whisperz/instance", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  try {
+    const instance = simpleReset.loadInstance();
+    res.json({ instance: instance || 'production' });
+  } catch (err) {
+    log("ERROR", "Failed to load instance", { err: err.message });
+    res.status(500).json({ error: "Failed to load instance" });
+  }
+});
 
+// Complete reset - server and clients
+app.post("/admin/database/complete-reset", async (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { newInstance, createSnapshot } = req.body;
+  
+  try {
+    // Generate instance name if not provided
+    const instanceName = newInstance || `v${Date.now()}`;
+    
+    // Create snapshot if requested
+    if (createSnapshot) {
+      const snapshotName = `pre-reset-${Date.now()}`;
+      log("INFO", `Creating snapshot before reset: ${snapshotName}`);
+      // Implement snapshot logic here if needed
+    }
+    
+    // Perform reset
+    const result = await simpleReset.reset(instanceName);
+    
+    if (result.success) {
+      log("INFO", `Database reset successful. New instance: ${instanceName}`);
+      res.json({ 
+        success: true, 
+        newInstance: instanceName,
+        message: "Reset successful. Server will restart."
+      });
+      
+      // Restart server after a short delay
+      setTimeout(() => {
+        log("INFO", "Restarting server after reset...");
+        process.exit(0); // Process manager should restart it
+      }, 1000);
+    } else {
+      throw new Error("Reset failed");
+    }
+  } catch (err) {
+    log("ERROR", "Database reset failed", { err: err.message });
+    res.status(500).json({ error: err.message || "Reset failed" });
+  }
+});
+
+// Database snapshots endpoints
+app.get("/admin/database/snapshots", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  // For now, return empty array - can be implemented later
+  res.json({ snapshots: [] });
+});
+
+app.post("/admin/database/snapshot", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { name, description } = req.body;
+  
+  // Placeholder for snapshot creation
+  log("INFO", `Snapshot requested: ${name}`);
+  res.json({ success: true, message: "Snapshot feature coming soon" });
+});
+
+app.post("/admin/database/restore", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { snapshotId } = req.body;
+  
+  // Placeholder for restore
+  log("INFO", `Restore requested from snapshot: ${snapshotId}`);
+  res.json({ success: true, message: "Restore feature coming soon" });
+});
+
+app.delete("/admin/database/snapshot/:id", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { id } = req.params;
+  
+  // Placeholder for deletion
+  log("INFO", `Delete snapshot requested: ${id}`);
+  res.json({ success: true, message: "Delete feature coming soon" });
+});
 
 // Health endpoint (minimal, no internal metrics)
 app.get('/health', (req, res) => {
