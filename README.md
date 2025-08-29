@@ -1,8 +1,8 @@
 # Gun.js Relay Server
 
-## Version 3.4.0 - Enterprise-Ready Security & Monitoring
+## Version 3.5.0 - Production-Hardened with Security Fixes
 
-A high-performance, secure relay server for Gun.js with enterprise-grade security, audit logging, and Whisperz chat integration.
+A high-performance, secure relay server for Gun.js with enterprise-grade security, comprehensive audit logging, and Whisperz chat integration. All critical security vulnerabilities have been addressed.
 
 ### ✨ Key Features
 - **🔄 Complete Reset System**: Clear server database and notify all connected Whisperz clients
@@ -101,17 +101,57 @@ docker run -p 8765:8765 -e ADMIN_PASSWORD=your-secure-password gun-relay
 
 ### Environment Variables
 
-- `PORT` - Server port (default: 8765)
-- `ADMIN_PASSWORD` - Admin panel password (default: admin123)
-- `MAX_CONNECTIONS` - Maximum concurrent connections (default: 10000)
-- `RATE_LIMIT_WINDOW` - Rate limit time window in ms (default: 60000)
-- `MAX_REQUESTS_PER_WINDOW` - Max requests per window (default: 100)
+```bash
+# Core Settings (REQUIRED for production)
+NODE_ENV=production                    # Set to 'production' for security
+ADMIN_PASSWORD=your-secure-password    # Min 12 chars, no default in production
+PORT=8765                              # Server port
+
+# Security Settings
+ADMIN_IP_WHITELIST=1.2.3.4,5.6.7.8    # Restrict admin access to specific IPs
+AUDIT_LOG_FILE=/var/log/gun-audit.log # Persist audit logs to file
+SESSION_DURATION_MS=3600000            # Session timeout (1 hour default)
+ALLOWED_ORIGINS=https://example.com    # CORS whitelist (comma-separated)
+FORCE_INSECURE=false                  # Only set true for local dev
+
+# Performance & Limits
+MAX_CONNECTIONS=1000                   # Maximum concurrent connections
+MAX_LOGS=500                          # Maximum log entries in memory
+MAX_ERRORS=100                        # Maximum error entries in memory
+RATE_LIMIT_WINDOW=60000               # Rate limit window (ms)
+MAX_REQUESTS_PER_WINDOW=100           # Requests per window
+
+# Instance Management
+WHISPERZ_INSTANCE=v123456             # Force specific instance name
+DATA_BASE=/path/to/data                # Database directory (default: ./radata_base)
+```
+
+## Security Features
+
+### 🔒 Security Hardening (v3.5.0)
+
+All critical vulnerabilities have been addressed:
+
+- **Path Traversal Protection**: Strict validation prevents file system access
+- **XSS Prevention**: Safe DOM manipulation, no innerHTML with user data  
+- **CORS Security**: Restrictive CORS policy, even in development
+- **Input Validation**: All inputs validated, no mass assignment
+- **Error Handling**: No sensitive information leaked in errors
+- **Memory Protection**: Bounded logs prevent memory exhaustion
+- **Session Security**: HttpOnly cookies, secure flags, session binding
+- **Rate Limiting**: Protection on all sensitive endpoints
+- **Audit Logging**: Complete audit trail of all admin actions
+- **IP Whitelisting**: Optional IP-based access control
 
 ## Admin Panel
 
-Access the admin panel at `http://your-server:port/`
+Access the admin panel at `https://your-server:port/`
 
-Default password: `admin123` (change this in production!)
+⚠️ **Production Requirements**:
+- Set `NODE_ENV=production`
+- Set strong `ADMIN_PASSWORD` (min 12 chars)
+- Use HTTPS (reverse proxy with SSL)
+- Consider setting `ADMIN_IP_WHITELIST`
 
 ### Admin Features
 

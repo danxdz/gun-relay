@@ -53,9 +53,10 @@ const PORT = process.env.PORT || 8765;
 app.set('trust proxy', 1);
 
 // --- Constants ---
-const MAX_LOGS = 500;
-const MAX_ERRORS = 100;
-const MAX_CONNECTIONS = process.env.MAX_CONNECTIONS || 1000;
+const MAX_LOGS = parseInt(process.env.MAX_LOGS) || 500;
+const MAX_ERRORS = parseInt(process.env.MAX_ERRORS) || 100;
+const MAX_CONNECTIONS = parseInt(process.env.MAX_CONNECTIONS) || 1000;
+const MAX_LOG_SIZE = 1024 * 100; // Max 100KB per log entry
 
 // ---------- ADMIN PASSWORD LOADING & MIGRATION ----------
 // Priority: env -> .admin_password (bcrypt hash) -> default (only allowed in non-production)
@@ -251,12 +252,29 @@ const errorTracker = new ErrorTracker();
 
 // ---------- SAFE PATHS ----------
 function safeResolveDbPath(relName) {
-  // only allow small safe names (letters, digits, dash, underscore)
-  if (typeof relName !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(relName)) {
-    throw new Error('Invalid database name');
+  // Strict validation to prevent path traversal
+  if (typeof relName !== 'string' || !relName) {
+    throw new Error('Invalid database name: must be non-empty string');
   }
+  
+  // Only allow alphanumeric, dash, underscore (no dots, slashes, etc)
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(relName)) {
+    throw new Error('Invalid database name: must be alphanumeric, 1-64 chars');
+  }
+  
+  // Additional check for path traversal patterns
+  if (relName.includes('..') || relName.includes('/') || relName.includes('\\')) {
+    throw new Error('Path traversal attempt blocked');
+  }
+  
   const candidate = path.resolve(DATA_BASE, relName);
-  if (!candidate.startsWith(DATA_BASE + path.sep)) throw new Error('Invalid path');
+  const normalizedBase = path.normalize(DATA_BASE) + path.sep;
+  const normalizedCandidate = path.normalize(candidate);
+  
+  if (!normalizedCandidate.startsWith(normalizedBase)) {
+    throw new Error('Path validation failed');
+  }
+  
   return candidate;
 }
 
@@ -353,9 +371,12 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return cb(null, true);
     
-    // In development, allow all origins
+    // In development, still check but be more permissive
     if (process.env.NODE_ENV !== 'production') {
-      return cb(null, true);
+      // Allow localhost and common dev ports
+      if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        return cb(null, true);
+      }
     }
     
     // Check against allowed origins
@@ -708,9 +729,12 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid password' });
     }
   } catch (err) {
-    console.error('Login error:', err.message, err.stack);
     errorTracker.track(err, 'admin/login');
-    return res.status(500).json({ success: false, error: 'Internal error: ' + err.message });
+    // Don't leak error details in production
+    const errorMsg = process.env.NODE_ENV === 'production' 
+      ? 'Authentication service unavailable' 
+      : `Internal error: ${err.message}`;
+    return res.status(500).json({ success: false, error: errorMsg });
   }
 });
 
@@ -829,7 +853,17 @@ const dangerousOpLimiter = rateLimit({
 app.post("/admin/database/complete-reset", dangerousOpLimiter, async (req, res) => {
   if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
   
-  const { newInstance, createSnapshot } = req.body;
+  // Strict input validation - only accept expected fields
+  const { newInstance, createSnapshot } = req.body || {};
+  
+  // Validate input types
+  if (newInstance !== undefined && (typeof newInstance !== 'string' || newInstance.length > 100)) {
+    return res.status(400).json({ error: "Invalid instance name" });
+  }
+  
+  if (createSnapshot !== undefined && typeof createSnapshot !== 'boolean') {
+    return res.status(400).json({ error: "Invalid snapshot parameter" });
+  }
   
   try {
     // Generate instance name if not provided
