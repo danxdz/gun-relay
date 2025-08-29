@@ -334,8 +334,36 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 
+// Initialize Gun instance for server use
+const gun = Gun({ 
+  web: app,
+  file: 'radata',
+  axe: false  // Disable to prevent clearing browser data
+});
+
 // Serve Gun
 app.use(Gun.serve);
+
+// Function to publish instance to Gun for clients
+function publishInstanceToGun() {
+  const instance = simpleReset.loadInstance();
+  if (instance) {
+    gun.get('_whisperz_system').get('config').put({
+      instance: instance,
+      timestamp: Date.now(),
+      resetBy: 'server',
+      message: 'Instance update'
+    });
+    console.log(`Published instance to Gun: ${instance}`);
+  }
+}
+
+// Publish instance on startup and periodically
+setTimeout(() => {
+  publishInstanceToGun();
+  // Republish every 30 seconds to ensure clients get it
+  setInterval(publishInstanceToGun, 30000);
+}, 2000); // Wait 2 seconds for Gun to initialize
 
 // ---------- ADMIN ENDPOINTS ----------
 
@@ -721,7 +749,16 @@ app.get("/admin/whisperz/instance", (req, res) => {
   
   try {
     const instance = simpleReset.loadInstance();
-    res.json({ instance: instance || 'production' });
+    
+    // Also get what's published in Gun
+    gun.get('_whisperz_system').get('config').once((data) => {
+      res.json({ 
+        instance: instance || 'production',
+        gunInstance: data ? data.instance : null,
+        gunTimestamp: data ? data.timestamp : null,
+        synced: data && data.instance === instance
+      });
+    });
   } catch (err) {
     log("ERROR", "Failed to load instance", { err: err.message });
     res.status(500).json({ error: "Failed to load instance" });
@@ -750,6 +787,15 @@ app.post("/admin/database/complete-reset", async (req, res) => {
     
     if (result.success) {
       log("INFO", `Database reset successful. New instance: ${instanceName}`);
+      
+      // Immediately publish new instance to Gun for clients
+      gun.get('_whisperz_system').get('config').put({
+        instance: instanceName,
+        timestamp: Date.now(),
+        resetBy: 'admin',
+        message: 'Server reset - all clients should clear data'
+      });
+      
       res.json({ 
         success: true, 
         newInstance: instanceName,
