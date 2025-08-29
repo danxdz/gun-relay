@@ -48,6 +48,9 @@ try {
 const app = express();
 const PORT = process.env.PORT || 8765;
 
+// Trust proxy headers (needed for Render and other proxied deployments)
+app.set('trust proxy', true);
+
 // --- Constants ---
 const MAX_LOGS = 500;
 const MAX_ERRORS = 100;
