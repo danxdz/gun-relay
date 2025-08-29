@@ -251,10 +251,105 @@ class ErrorTracker {
 }
 const errorTracker = new ErrorTracker();
 
+// ---------- IP & GEOLOCATION ----------
+// Get real client IP considering proxies
+function getClientIP(req) {
+  // Trust proxy is set, so req.ip should work
+  if (req.ip) return req.ip;
+  
+  // Fallback checks
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const ips = forwarded.split(',').map(ip => ip.trim());
+    return ips[0];
+  }
+  
+  return req.headers['x-real-ip'] || 
+         req.connection?.remoteAddress || 
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// Simple in-memory cache for geo lookups
+const geoCache = new Map();
+const GEO_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// Get IP geolocation using free service
+async function getIPGeolocation(ip) {
+  // Skip for local IPs
+  if (ip === 'unknown' || ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('192.168.')) {
+    return { 
+      country: 'Local',
+      city: 'Local',
+      region: 'Local',
+      isLocal: true 
+    };
+  }
+  
+  // Check cache
+  const cached = geoCache.get(ip);
+  if (cached && (Date.now() - cached.timestamp < GEO_CACHE_TTL)) {
+    return cached.data;
+  }
+  
+  try {
+    // Use ip-api.com free service (no API key needed, 45 requests per minute)
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,lat,lon,isp,org,as`);
+    
+    if (!response.ok) {
+      throw new Error('Geo lookup failed');
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      const geoData = {
+        country: data.country || 'Unknown',
+        countryCode: data.countryCode || 'XX',
+        region: data.regionName || data.region || 'Unknown',
+        city: data.city || 'Unknown',
+        lat: data.lat || 0,
+        lon: data.lon || 0,
+        isp: data.isp || 'Unknown',
+        org: data.org || 'Unknown',
+        isLocal: false
+      };
+      
+      // Cache the result
+      geoCache.set(ip, {
+        data: geoData,
+        timestamp: Date.now()
+      });
+      
+      // Clean old cache entries
+      if (geoCache.size > 1000) {
+        const cutoff = Date.now() - GEO_CACHE_TTL;
+        for (const [key, value] of geoCache) {
+          if (value.timestamp < cutoff) {
+            geoCache.delete(key);
+          }
+        }
+      }
+      
+      return geoData;
+    }
+  } catch (err) {
+    // Silently fail, return minimal data
+  }
+  
+  return {
+    country: 'Unknown',
+    city: 'Unknown',
+    region: 'Unknown',
+    isLocal: false
+  };
+}
+
 // ---------- CONNECTION TRACKING ----------
 // Track connection metadata with 1-second precision
 function trackConnection(req, eventType = 'http') {
-  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  // Get real IP (considering proxies)
+  const ip = getClientIP(req);
   const timestamp = Math.floor(Date.now() / 1000) * 1000; // Round to nearest second
   const userAgent = req.headers['user-agent'] || 'unknown';
   const origin = req.headers['origin'] || req.headers['referer'] || 'direct';
@@ -271,8 +366,19 @@ function trackConnection(req, eventType = 'http') {
     eventType: eventType,
     requests: 1,
     // Auto-detect environment based on connections
-    environment: detectEnvironment(origin, ip)
+    environment: detectEnvironment(origin, ip),
+    // Geo info will be added asynchronously
+    geo: null
   };
+  
+  // Get geo location asynchronously (non-blocking)
+  getIPGeolocation(ip).then(geo => {
+    if (stats.connectionMetadata.has(connId)) {
+      stats.connectionMetadata.get(connId).geo = geo;
+    }
+  }).catch(() => {
+    // Silently ignore geo lookup failures
+  });
   
   // Update or create entry
   if (stats.connectionMetadata.has(connId)) {
@@ -446,6 +552,12 @@ const loginLimiter = rateLimit({
 });
 
 // ---------- MIDDLEWARE ----------
+// Track all connections automatically
+app.use((req, res, next) => {
+  // Track the connection with 1-second precision
+  trackConnection(req, 'http');
+  next();
+});
 if (helmet) {
   app.use(helmet({
     contentSecurityPolicy: false,
@@ -1100,6 +1212,73 @@ app.get('/admin/audit', (req, res) => {
     total: auditLogs.length,
     limit,
     logs
+  });
+});
+
+// Get connection metadata and auto-configuration suggestions
+app.get('/admin/connections', (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const connections = Array.from(stats.connectionMetadata.values())
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 100); // Last 100 connections
+  
+  const autoConfig = autoConfigureFromConnections();
+  
+  // Group connections by country
+  const byCountry = {};
+  connections.forEach(conn => {
+    if (conn.geo) {
+      const country = conn.geo.country || 'Unknown';
+      byCountry[country] = (byCountry[country] || 0) + 1;
+    }
+  });
+  
+  res.json({
+    connections: connections,
+    autoConfiguration: autoConfig,
+    statistics: {
+      total: connections.length,
+      uniqueIPs: [...new Set(connections.map(c => c.ip))].length,
+      byCountry: byCountry,
+      lastHour: connections.filter(c => c.timestamp > Date.now() - 3600000).length
+    }
+  });
+});
+
+// Apply auto-configuration (requires admin)
+app.post('/admin/auto-configure', (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const autoConfig = autoConfigureFromConnections();
+  
+  if (!autoConfig) {
+    return res.status(400).json({ error: "No connections to analyze" });
+  }
+  
+  // Apply suggested CORS origins
+  if (autoConfig.suggestedOrigins.length > 0) {
+    // Add new origins to allowed list
+    autoConfig.suggestedOrigins.forEach(origin => {
+      if (!allowedOrigins.includes(origin)) {
+        allowedOrigins.push(origin);
+      }
+    });
+  }
+  
+  audit('AUTO_CONFIGURE', req, { 
+    environment: autoConfig.detectedEnvironment,
+    origins: autoConfig.suggestedOrigins,
+    ips: autoConfig.activeIPs.length 
+  });
+  
+  res.json({
+    success: true,
+    applied: {
+      environment: autoConfig.detectedEnvironment,
+      corsOrigins: allowedOrigins,
+      message: `Auto-configured for ${autoConfig.detectedEnvironment} environment with ${autoConfig.suggestedOrigins.length} origins`
+    }
   });
 });
 

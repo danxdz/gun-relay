@@ -1,13 +1,16 @@
 # Gun.js Relay Server
 
-## Version 3.5.0 - Production-Hardened with Security Fixes
+## Version 3.6.0 - Auto-Configuration with IP Geolocation
 
-A high-performance, secure relay server for Gun.js with enterprise-grade security, comprehensive audit logging, and Whisperz chat integration. All critical security vulnerabilities have been addressed.
+A high-performance, secure relay server for Gun.js with automatic environment detection, IP geolocation tracking, and enterprise-grade security. No manual environment configuration needed!
 
 ### ✨ Key Features
+- **🌍 Auto-Configuration**: Automatically detects environment from connections - no env vars needed!
+- **📍 IP Geolocation**: Tracks connection origins with country, city, ISP data (1-second precision)
 - **🔄 Complete Reset System**: Clear server database and notify all connected Whisperz clients
 - **🔐 Advanced Security**: IP whitelisting, audit logging, XSS protection, CSRF tokens
 - **📡 Instance Synchronization**: Automatic client detection of server resets
+- **🎯 Smart CORS**: Auto-configures allowed origins based on actual connections
 - **🎯 Auto-Disappearing Notifications**: Beautiful toast notifications instead of alerts
 - **🌐 CORS Support**: Automatic support for Vercel and Render deployments
 - **📊 Rate Limiting**: Protection against abuse with configurable limits
@@ -164,6 +167,20 @@ Access the admin panel at `https://your-server:port/`
 - **Error Tracking**: View recent errors and logs
 
 ## API Endpoints
+
+### 🌍 Auto-Configuration (NEW!)
+
+The server now automatically tracks all connections with IP geolocation and suggests optimal configuration:
+
+- **GET /admin/connections** - View tracked connections with geolocation
+  - Shows country, city, ISP for each connection
+  - Groups connections by 1-second intervals
+  - Provides auto-configuration suggestions
+
+- **POST /admin/auto-configure** - Apply auto-detected settings
+  - Automatically configures CORS based on actual traffic
+  - No manual environment variables needed!
+  - Detects if running on Vercel, Render, or local
 
 ### Public Endpoints
 - `GET /` - Admin dashboard
