@@ -334,18 +334,19 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 
-// Initialize Gun instance for server use
-const gun = Gun({ 
-  web: app,
-  file: 'radata',
-  axe: false  // Disable to prevent clearing browser data
-});
-
-// Serve Gun
+// Serve Gun middleware first
 app.use(Gun.serve);
+
+// Initialize Gun instance for server use
+// Note: Gun will be fully initialized after server starts
+let gun;
 
 // Function to publish instance to Gun for clients
 function publishInstanceToGun() {
+  if (!gun) {
+    console.log('Gun not initialized yet, skipping instance publish');
+    return;
+  }
   const instance = simpleReset.loadInstance();
   if (instance) {
     gun.get('_whisperz_system').get('config').put({
@@ -357,13 +358,6 @@ function publishInstanceToGun() {
     console.log(`Published instance to Gun: ${instance}`);
   }
 }
-
-// Publish instance on startup and periodically
-setTimeout(() => {
-  publishInstanceToGun();
-  // Republish every 30 seconds to ensure clients get it
-  setInterval(publishInstanceToGun, 30000);
-}, 2000); // Wait 2 seconds for Gun to initialize
 
 // ---------- ADMIN ENDPOINTS ----------
 
@@ -873,9 +867,24 @@ app.get('/version', (req, res) => {
   });
 });
 
-// Start server
+// Start server with WebSocket support for Gun
 
 // TODO: Add graceful shutdown and signal handling for production
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Gun relay server listening on ${PORT}`);
+  
+  // Initialize Gun with the server for WebSocket support
+  gun = Gun({ 
+    web: server,
+    file: path.join(DATA_BASE || 'radata'),
+    axe: false,  // Disable to prevent clearing browser data
+    peers: []    // No default peers, this is the main relay
+  });
+  
+  // Start publishing instance after Gun is ready
+  setTimeout(() => {
+    publishInstanceToGun();
+    // Republish every 30 seconds to ensure clients get it
+    setInterval(publishInstanceToGun, 30000);
+  }, 2000);
 });
