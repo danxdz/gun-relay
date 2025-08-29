@@ -6,7 +6,32 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt'); // SECURITY: hash admin passwords
+let bcrypt;
+try {
+  bcrypt = require('bcrypt'); // SECURITY: hash admin passwords
+} catch (e) {
+  console.warn('[SECURITY WARNING] bcrypt not installed! Using crypto fallback (less secure)');
+  // Fallback to crypto if bcrypt is not available
+  bcrypt = {
+    hashSync: (password, rounds) => {
+      const salt = crypto.randomBytes(16).toString('hex');
+      return 'crypto$' + salt + '$' + crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    },
+    compareSync: (password, hash) => {
+      if (hash.startsWith('crypto$')) {
+        const parts = hash.split('$');
+        const salt = parts[1];
+        const storedHash = parts[2];
+        const testHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+        return storedHash === testHash;
+      }
+      return false;
+    },
+    compare: async (password, hash) => {
+      return bcrypt.compareSync(password, hash);
+    }
+  };
+}
 const rateLimit = require('express-rate-limit'); // SECURITY: protect login
 const cookieParser = require('cookie-parser'); // SECURITY: cookie sessions
 const DatabaseManager = require('./database-manager');
@@ -48,7 +73,7 @@ function isWeakPasswordPlain(pw) {
 if (fs.existsSync('.admin_password')) {
   try {
     const saved = fs.readFileSync('.admin_password', 'utf8').trim();
-    if (saved.startsWith('$2')) {
+    if (saved.startsWith('$2') || saved.startsWith('crypto$')) {
       ADMIN_PASSWORD_HASH = saved;
       console.log('Loaded admin password hash from .admin_password');
     } else {
@@ -65,7 +90,7 @@ if (fs.existsSync('.admin_password')) {
 
 // If env supplied and not a hash, prefer env (but store hashed file for persistence)
 if (rawEnvPassword) {
-  if (rawEnvPassword.startsWith('$2')) {
+  if (rawEnvPassword.startsWith('$2') || rawEnvPassword.startsWith('crypto$')) {
     ADMIN_PASSWORD_HASH = rawEnvPassword;
     console.log('Using ADMIN_PASSWORD hash from environment');
   } else {
@@ -93,9 +118,15 @@ if (rawEnvPassword) {
 }
 
 // If no password at all, in production refuse to start
-if (!ADMIN_PASSWORD_HASH && process.env.NODE_ENV === 'production') {
-  console.error('ADMIN_PASSWORD not configured. Set ADMIN_PASSWORD env or provide .admin_password (bcrypt hash).');
-  process.exit(1);
+if (!ADMIN_PASSWORD_HASH) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ADMIN_PASSWORD not configured. Set ADMIN_PASSWORD env or provide .admin_password (bcrypt hash).');
+    process.exit(1);
+  } else {
+    // Development fallback - use a default password
+    console.warn('[DEV MODE] No admin password configured. Using default: admin123');
+    ADMIN_PASSWORD_HASH = bcrypt.hashSync('admin123', HASH_ROUNDS);
+  }
 }
 
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -562,8 +593,9 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid password' });
     }
   } catch (err) {
+    console.error('Login error:', err.message, err.stack);
     errorTracker.track(err, 'admin/login');
-    return res.status(500).json({ success: false, error: 'Internal' });
+    return res.status(500).json({ success: false, error: 'Internal error: ' + err.message });
   }
 });
 
