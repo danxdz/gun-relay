@@ -152,6 +152,7 @@ const stats = {
   messageRate: [],
   bandwidthUsage: [],
   peerMap: new Map(),
+  connectionMetadata: new Map(), // Store detailed connection info
   rateLimitMap: new Map(),
   bannedIPs: new Set(),
   logs: [],
@@ -249,6 +250,109 @@ class ErrorTracker {
   }
 }
 const errorTracker = new ErrorTracker();
+
+// ---------- CONNECTION TRACKING ----------
+// Track connection metadata with 1-second precision
+function trackConnection(req, eventType = 'http') {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const timestamp = Math.floor(Date.now() / 1000) * 1000; // Round to nearest second
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const origin = req.headers['origin'] || req.headers['referer'] || 'direct';
+  
+  // Create or update connection metadata
+  const connId = `${ip}_${timestamp}`;
+  const metadata = {
+    id: connId,
+    ip: ip,
+    timestamp: timestamp,
+    lastSeen: Date.now(),
+    userAgent: userAgent,
+    origin: origin,
+    eventType: eventType,
+    requests: 1,
+    // Auto-detect environment based on connections
+    environment: detectEnvironment(origin, ip)
+  };
+  
+  // Update or create entry
+  if (stats.connectionMetadata.has(connId)) {
+    const existing = stats.connectionMetadata.get(connId);
+    existing.requests++;
+    existing.lastSeen = Date.now();
+  } else {
+    stats.connectionMetadata.set(connId, metadata);
+    
+    // Auto-cleanup old entries (older than 1 hour)
+    if (stats.connectionMetadata.size > 1000) {
+      const oneHourAgo = Date.now() - 3600000;
+      for (const [key, value] of stats.connectionMetadata) {
+        if (value.lastSeen < oneHourAgo) {
+          stats.connectionMetadata.delete(key);
+        }
+      }
+    }
+  }
+  
+  return metadata;
+}
+
+// Auto-detect environment based on connection patterns
+function detectEnvironment(origin, ip) {
+  // Check for common development patterns
+  if (origin?.includes('localhost') || origin?.includes('127.0.0.1') || ip?.includes('127.0.0.1')) {
+    return 'development';
+  }
+  
+  // Check for Vercel deployment
+  if (origin?.includes('vercel.app')) {
+    return 'vercel-preview';
+  }
+  
+  // Check for Render deployment
+  if (origin?.includes('onrender.com') || origin?.includes('render.com')) {
+    return 'render-production';
+  }
+  
+  // Check for common staging patterns
+  if (origin?.includes('staging') || origin?.includes('test')) {
+    return 'staging';
+  }
+  
+  return 'production';
+}
+
+// Auto-configure based on connection patterns
+function autoConfigureFromConnections() {
+  const connections = Array.from(stats.connectionMetadata.values());
+  
+  if (connections.length === 0) return null;
+  
+  // Count environment types
+  const envCounts = {};
+  connections.forEach(conn => {
+    envCounts[conn.environment] = (envCounts[conn.environment] || 0) + 1;
+  });
+  
+  // Find most common environment
+  const primaryEnv = Object.entries(envCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  
+  // Extract unique origins for auto-CORS configuration
+  const uniqueOrigins = [...new Set(connections
+    .map(c => c.origin)
+    .filter(o => o && o !== 'direct' && !o.includes('undefined')))];
+  
+  // Get unique IPs for potential whitelist
+  const uniqueIPs = [...new Set(connections.map(c => c.ip))];
+  
+  return {
+    detectedEnvironment: primaryEnv,
+    suggestedOrigins: uniqueOrigins,
+    activeIPs: uniqueIPs,
+    connectionCount: connections.length,
+    timestamp: Date.now()
+  };
+}
 
 // ---------- SAFE PATHS ----------
 function safeResolveDbPath(relName) {
