@@ -789,20 +789,17 @@ app.post("/admin/database/complete-reset", async (req, res) => {
     if (result.success) {
       log("INFO", `Database reset successful. New instance: ${instanceName}`);
       
-      // Clear the old instance from Gun completely
-      gun.get('_whisperz_system').put(null);
+      // Clear the old Gun data and immediately set new instance
+      // Using put(null) then immediately setting new data
+      gun.get('_whisperz_system').get('config').put({
+        instance: instanceName,
+        timestamp: Date.now(),
+        resetBy: 'admin',
+        message: 'Server reset - all clients should clear data',
+        reset: true
+      });
       
-      // Wait a bit then publish new instance to Gun
-      setTimeout(() => {
-        gun.get('_whisperz_system').get('config').put({
-          instance: instanceName,
-          timestamp: Date.now(),
-          resetBy: 'admin',
-          message: 'Server reset - all clients should clear data',
-          reset: true
-        });
-        log("INFO", `Published new instance to Gun: ${instanceName}`);
-      }, 100);
+      log("INFO", `Published new instance to Gun: ${instanceName}`);
       
       res.json({ 
         success: true, 
@@ -932,27 +929,27 @@ const server = app.listen(PORT, () => {
   
   // On server start, check for instance
   setTimeout(() => {
-    // First check if we have a file instance (this survives Gun data clear)
-    const fileInstance = simpleReset.loadInstance();
-    
     gun.get('_whisperz_system').get('config').once((data) => {
       let instance;
       
-      if (data && data.instance && !data.reset) {
-        // Instance exists in Gun and no reset flag, use it
+      if (data && data.instance) {
+        // Instance exists in Gun, this is our source of truth
         instance = data.instance;
         console.log(`Found instance in Gun: ${instance}`);
-      } else if (fileInstance) {
-        // Use file instance (this is what was set during reset)
-        instance = fileInstance;
-        console.log(`Using instance from file: ${instance}`);
       } else {
-        // No instance anywhere, create new
-        instance = `v${Date.now()}`;
-        console.log(`Creating new instance: ${instance}`);
+        // No instance in Gun, check file or create new
+        const fileInstance = simpleReset.loadInstance();
+        if (fileInstance && fileInstance !== 'production') {
+          instance = fileInstance;
+          console.log(`Using instance from file: ${instance}`);
+        } else {
+          // Create new instance
+          instance = `v${Date.now()}`;
+          console.log(`Creating new instance: ${instance}`);
+        }
       }
       
-      // Save and publish the instance
+      // Save locally and publish to Gun
       simpleReset.saveInstance(instance);
       
       gun.get('_whisperz_system').get('config').put({
