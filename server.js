@@ -49,7 +49,8 @@ const app = express();
 const PORT = process.env.PORT || 8765;
 
 // Trust proxy headers (needed for Render and other proxied deployments)
-app.set('trust proxy', true);
+// Use specific number for Render (1 proxy)
+app.set('trust proxy', 1);
 
 // --- Constants ---
 const MAX_LOGS = 500;
@@ -289,10 +290,13 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s=>s.t
 
 // If no origins specified, allow common patterns
 if (allowedOrigins.length === 0 && process.env.NODE_ENV === 'production') {
-  // Allow Render preview URLs and the main domain
+  // Allow Render preview URLs, Whisperz client, and common dev URLs
   allowedOrigins.push(
     'https://gun-relay-nchb.onrender.com',
+    'https://localchat-sandy.vercel.app',
+    'https://whisperz.vercel.app',
     'http://localhost:3000',
+    'http://localhost:5173',
     'http://localhost:8080'
   );
 }
@@ -881,10 +885,22 @@ const server = app.listen(PORT, () => {
     peers: []    // No default peers, this is the main relay
   });
   
-  // Start publishing instance after Gun is ready
+  // On server start, check if we have a stored instance in Gun
+  // If not, use the file instance or generate a new one
   setTimeout(() => {
-    publishInstanceToGun();
-    // Republish every 30 seconds to ensure clients get it
-    setInterval(publishInstanceToGun, 30000);
+    gun.get('_whisperz_system').get('config').once((data) => {
+      if (!data || !data.instance) {
+        // No instance in Gun, publish from file
+        console.log('No instance in Gun, publishing from file...');
+        publishInstanceToGun();
+      } else {
+        // Instance exists in Gun, update our file to match
+        console.log(`Found instance in Gun: ${data.instance}`);
+        simpleReset.saveInstance(data.instance);
+      }
+      
+      // Republish every 30 seconds to ensure clients get it
+      setInterval(publishInstanceToGun, 30000);
+    });
   }, 2000);
 });

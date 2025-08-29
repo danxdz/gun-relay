@@ -51,14 +51,18 @@ class SimpleReset {
     for (const dbPath of dbPaths) {
       try {
         if (fs.existsSync(dbPath)) {
-          // Remove all files in the directory
+          // Remove all files in the directory but keep the directory itself
           const files = fs.readdirSync(dbPath);
           for (const file of files) {
             const filePath = path.join(dbPath, file);
-            if (fs.statSync(filePath).isDirectory()) {
-              fs.rmSync(filePath, { recursive: true, force: true });
-            } else {
-              fs.unlinkSync(filePath);
+            try {
+              if (fs.statSync(filePath).isDirectory()) {
+                fs.rmSync(filePath, { recursive: true, force: true });
+              } else {
+                fs.unlinkSync(filePath);
+              }
+            } catch (fileErr) {
+              console.error(`Error removing ${filePath}:`, fileErr.message);
             }
           }
           console.log(`Database cleared successfully at: ${dbPath}`);
