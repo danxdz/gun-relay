@@ -921,7 +921,8 @@ const server = app.listen(PORT, () => {
     web: server,
     file: path.join(DATA_BASE || 'radata'),
     axe: false,  // Disable to prevent clearing browser data
-    peers: []    // No default peers, this is the main relay
+    peers: [],   // No default peers, this is the main relay
+    multicast: false  // Disable UDP multicast (not needed on cloud hosting)
   });
   
   // On server start, determine instance
