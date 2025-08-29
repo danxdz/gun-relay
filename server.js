@@ -79,13 +79,13 @@ if (fs.existsSync('.admin_password')) {
     const saved = fs.readFileSync('.admin_password', 'utf8').trim();
     if (saved.startsWith('$2') || saved.startsWith('crypto$')) {
       ADMIN_PASSWORD_HASH = saved;
-      console.log('Loaded admin password hash from .admin_password');
+      // Loaded admin password hash from .admin_password
     } else {
       // Plaintext present - migrate to bcrypt hash and overwrite with hash (restricted perms)
       const hashed = bcrypt.hashSync(saved, HASH_ROUNDS);
       fs.writeFileSync('.admin_password', hashed, { mode: 0o600 });
       ADMIN_PASSWORD_HASH = hashed;
-      console.log('Migrated plaintext .admin_password to bcrypt hash (file overwritten)');
+      // Migrated plaintext .admin_password to bcrypt hash
     }
   } catch (err) {
     console.warn('Failed to read/migrate .admin_password:', err.message);
@@ -96,7 +96,7 @@ if (fs.existsSync('.admin_password')) {
 if (rawEnvPassword) {
   if (rawEnvPassword.startsWith('$2') || rawEnvPassword.startsWith('crypto$')) {
     ADMIN_PASSWORD_HASH = rawEnvPassword;
-    console.log('Using ADMIN_PASSWORD hash from environment');
+    // Using ADMIN_PASSWORD hash from environment
   } else {
     // if plain text provided in env, optionally refuse in production if weak
     if (process.env.NODE_ENV === 'production' && isWeakPasswordPlain(rawEnvPassword)) {
@@ -111,7 +111,7 @@ if (rawEnvPassword) {
         console.warn('Unable to persist admin hash to .admin_password; using in-memory only');
       }
       ADMIN_PASSWORD_HASH = hashed;
-      console.log('Loaded admin password from environment (hashed in-memory/persisted if possible)');
+      console.log('Admin password configured');
       // clear raw env var reference in memory
       rawEnvPassword = undefined;
     } catch (err) {
@@ -350,10 +350,8 @@ let gun;
 
 // Function to publish instance to Gun for clients
 function publishInstanceToGun() {
-  if (!gun) {
-    console.log('Gun not initialized yet, skipping instance publish');
-    return;
-  }
+  if (!gun) return; // Gun not initialized yet
+  
   const instance = simpleReset.loadInstance();
   if (instance) {
     gun.get('_whisperz_system').get('config').put({
@@ -362,7 +360,6 @@ function publishInstanceToGun() {
       resetBy: 'server',
       message: 'Instance update'
     });
-    console.log(`Published instance to Gun: ${instance}`);
   }
 }
 
@@ -935,23 +932,19 @@ const server = app.listen(PORT, () => {
     if (process.env.WHISPERZ_INSTANCE) {
       // Use environment variable (this persists on Render)
       instance = process.env.WHISPERZ_INSTANCE;
-      console.log(`Using instance from environment: ${instance}`);
     } else {
       // Check Gun for existing instance
       gun.get('_whisperz_system').get('config').once((data) => {
         if (data && data.instance) {
           instance = data.instance;
-          console.log(`Found instance in Gun: ${instance}`);
         } else {
           // No instance in Gun, check file or create new
           const fileInstance = simpleReset.loadInstance();
           if (fileInstance && fileInstance !== 'production') {
             instance = fileInstance;
-            console.log(`Using instance from file: ${instance}`);
           } else {
             // Create new instance
             instance = `v${Date.now()}`;
-            console.log(`Creating new instance: ${instance}`);
           }
         }
       });
@@ -960,7 +953,6 @@ const server = app.listen(PORT, () => {
       setTimeout(() => {
         if (!instance) {
           instance = `v${Date.now()}`;
-          console.log(`Creating new instance: ${instance}`);
         }
         publishInstance();
       }, 100);
@@ -981,13 +973,13 @@ const server = app.listen(PORT, () => {
         reset: false  // Clear any reset flag
       });
       
-      console.log(`Published instance to Gun: ${instance}`);
+      // Instance published to Gun
       
-      // Republish every 30 seconds to ensure clients get it
+      // Republish every 5 minutes (instead of 30 seconds) to reduce spam
       setInterval(() => {
         gun.get('_whisperz_system').get('config').once((data) => {
           if (data && data.instance) {
-            console.log(`Publishing instance to Gun: ${data.instance}`);
+            // Silently republish instance
             gun.get('_whisperz_system').get('config').put({
               instance: data.instance,
               timestamp: Date.now(),
@@ -996,7 +988,7 @@ const server = app.listen(PORT, () => {
             });
           }
         });
-      }, 30000);
+      }, 300000); // 5 minutes instead of 30 seconds
     }
   }, 2000);
 });

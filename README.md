@@ -1,20 +1,17 @@
 # Gun.js Relay Server
 
-## Version 3.2.0 - Complete Database Management System!
+## Version 3.3.0 - Production-Ready with Whisperz Integration
 
-A high-performance, production-ready relay server for Gun.js with comprehensive monitoring, admin controls, and advanced database management.
+A high-performance, secure relay server for Gun.js with admin controls, database management, and Whisperz chat integration.
 
-### 🆕 New in v3.2.0
-- **Complete Reset System**: Reset both server database and all Whisperz clients with one click
-- **Database Snapshots**: Create backups and restore previous states
-- **Instance Management**: Persistent instance tracking across server restarts
-- **Simplified Admin UI**: Clean, modern database management interface
-- **File-Based Instance Storage**: Reliable instance persistence using `current-instance.json`
-
-### Previous v3.1.0
-- **Database Reset Functionality**: Hard reset and clear database options
-- **Reset Utility Script**: Command-line tool for database management
-- **Enhanced Admin UI**: Database management panel with reset controls
+### ✨ Key Features
+- **🔄 Complete Reset System**: Clear server database and notify all connected Whisperz clients
+- **🔐 Secure Admin Panel**: Password-protected dashboard with modern UI
+- **📡 Instance Synchronization**: Automatic client detection of server resets
+- **🎯 Auto-Disappearing Notifications**: Beautiful toast notifications instead of alerts
+- **🌐 CORS Support**: Automatic support for Vercel and Render deployments
+- **📊 Rate Limiting**: Protection against abuse with configurable limits
+- **🔒 Security Hardened**: bcrypt passwords, session management, input validation
 - **Multiple Reset Methods**: Web UI, API endpoints, and CLI utility
 
 ## Features
