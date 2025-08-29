@@ -927,28 +927,49 @@ const server = app.listen(PORT, () => {
     peers: []    // No default peers, this is the main relay
   });
   
-  // On server start, check for instance
+  // On server start, determine instance
   setTimeout(() => {
-    gun.get('_whisperz_system').get('config').once((data) => {
-      let instance;
-      
-      if (data && data.instance) {
-        // Instance exists in Gun, this is our source of truth
-        instance = data.instance;
-        console.log(`Found instance in Gun: ${instance}`);
-      } else {
-        // No instance in Gun, check file or create new
-        const fileInstance = simpleReset.loadInstance();
-        if (fileInstance && fileInstance !== 'production') {
-          instance = fileInstance;
-          console.log(`Using instance from file: ${instance}`);
+    let instance;
+    
+    // Priority: Environment variable > Gun > File > New
+    if (process.env.WHISPERZ_INSTANCE) {
+      // Use environment variable (this persists on Render)
+      instance = process.env.WHISPERZ_INSTANCE;
+      console.log(`Using instance from environment: ${instance}`);
+    } else {
+      // Check Gun for existing instance
+      gun.get('_whisperz_system').get('config').once((data) => {
+        if (data && data.instance) {
+          instance = data.instance;
+          console.log(`Found instance in Gun: ${instance}`);
         } else {
-          // Create new instance
+          // No instance in Gun, check file or create new
+          const fileInstance = simpleReset.loadInstance();
+          if (fileInstance && fileInstance !== 'production') {
+            instance = fileInstance;
+            console.log(`Using instance from file: ${instance}`);
+          } else {
+            // Create new instance
+            instance = `v${Date.now()}`;
+            console.log(`Creating new instance: ${instance}`);
+          }
+        }
+      });
+      
+      // Wait for Gun check to complete
+      setTimeout(() => {
+        if (!instance) {
           instance = `v${Date.now()}`;
           console.log(`Creating new instance: ${instance}`);
         }
-      }
-      
+        publishInstance();
+      }, 100);
+      return;
+    }
+    
+    publishInstance();
+    
+    function publishInstance() {
       // Save locally and publish to Gun
       simpleReset.saveInstance(instance);
       
@@ -976,6 +997,6 @@ const server = app.listen(PORT, () => {
           }
         });
       }, 30000);
-    });
+    }
   }, 2000);
 });
