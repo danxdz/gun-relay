@@ -281,17 +281,48 @@ if (helmet) {
 }
 
 
-// CORS allowlist with fallback for dev
+// CORS configuration with better defaults
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s=>s.trim()).filter(Boolean);
+
+// If no origins specified, allow common patterns
+if (allowedOrigins.length === 0 && process.env.NODE_ENV === 'production') {
+  // Allow Render preview URLs and the main domain
+  allowedOrigins.push(
+    'https://gun-relay-nchb.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:8080'
+  );
+}
+
 app.use(cors({
   origin: function(origin, cb) {
-    if (!origin) return cb(null, true); // allow server-to-server requests
-    if (allowedOrigins.length === 0) {
-      if (process.env.NODE_ENV !== 'production') return cb(null, true); // allow all in dev
-      return cb(new Error('CORS disabled'));
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return cb(null, true);
+    
+    // In development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      return cb(null, true);
     }
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS not allowed'));
+    
+    // In production with no configured origins, allow same-origin and common patterns
+    if (allowedOrigins.length === 0) {
+      // Allow same-origin requests
+      if (origin.includes('gun-relay-nchb.onrender.com')) {
+        return cb(null, true);
+      }
+      // Log but don't crash - just reject the CORS request
+      console.warn(`CORS request from unconfigured origin: ${origin}`);
+      return cb(null, false);
+    }
+    
+    // Check against allowed origins
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      return cb(null, true);
+    }
+    
+    // Log and reject
+    console.warn(`CORS request blocked from: ${origin}`);
+    cb(null, false);
   },
   credentials: true
 }));
