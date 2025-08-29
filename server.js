@@ -789,13 +789,20 @@ app.post("/admin/database/complete-reset", async (req, res) => {
     if (result.success) {
       log("INFO", `Database reset successful. New instance: ${instanceName}`);
       
-      // Immediately publish new instance to Gun for clients
-      gun.get('_whisperz_system').get('config').put({
-        instance: instanceName,
-        timestamp: Date.now(),
-        resetBy: 'admin',
-        message: 'Server reset - all clients should clear data'
-      });
+      // Clear the old instance from Gun completely
+      gun.get('_whisperz_system').put(null);
+      
+      // Wait a bit then publish new instance to Gun
+      setTimeout(() => {
+        gun.get('_whisperz_system').get('config').put({
+          instance: instanceName,
+          timestamp: Date.now(),
+          resetBy: 'admin',
+          message: 'Server reset - all clients should clear data',
+          reset: true
+        });
+        log("INFO", `Published new instance to Gun: ${instanceName}`);
+      }, 100);
       
       res.json({ 
         success: true, 
@@ -807,13 +814,48 @@ app.post("/admin/database/complete-reset", async (req, res) => {
       setTimeout(() => {
         log("INFO", "Restarting server after reset...");
         process.exit(0); // Process manager should restart it
-      }, 1000);
+      }, 1500);
     } else {
       throw new Error("Reset failed");
     }
   } catch (err) {
     log("ERROR", "Database reset failed", { err: err.message });
     res.status(500).json({ error: err.message || "Reset failed" });
+  }
+});
+
+// Force set instance - for manual override
+app.post("/admin/database/force-instance", (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { instance } = req.body;
+  
+  if (!instance) {
+    return res.status(400).json({ error: "Instance name required" });
+  }
+  
+  try {
+    // Save to file
+    simpleReset.saveInstance(instance);
+    
+    // Clear old Gun data and set new
+    gun.get('_whisperz_system').put(null);
+    
+    setTimeout(() => {
+      gun.get('_whisperz_system').get('config').put({
+        instance: instance,
+        timestamp: Date.now(),
+        resetBy: 'admin',
+        message: 'Instance manually set',
+        reset: true
+      });
+    }, 100);
+    
+    log("INFO", `Instance manually set to: ${instance}`);
+    res.json({ success: true, instance: instance });
+  } catch (err) {
+    log("ERROR", "Failed to set instance", { err: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -888,37 +930,40 @@ const server = app.listen(PORT, () => {
     peers: []    // No default peers, this is the main relay
   });
   
-  // On server start, always check Gun for the latest instance
-  // Gun data persists across restarts on Render
+  // On server start, check for instance
   setTimeout(() => {
+    // First check if we have a file instance (this survives Gun data clear)
+    const fileInstance = simpleReset.loadInstance();
+    
     gun.get('_whisperz_system').get('config').once((data) => {
-      if (data && data.instance) {
-        // Instance exists in Gun, this is our source of truth
-        console.log(`Found instance in Gun: ${data.instance}`);
-        simpleReset.saveInstance(data.instance);
-        
-        // Republish to ensure all clients get it
-        gun.get('_whisperz_system').get('config').put({
-          instance: data.instance,
-          timestamp: Date.now(),
-          resetBy: 'server',
-          message: 'Server restarted - instance confirmed'
-        });
+      let instance;
+      
+      if (data && data.instance && !data.reset) {
+        // Instance exists in Gun and no reset flag, use it
+        instance = data.instance;
+        console.log(`Found instance in Gun: ${instance}`);
+      } else if (fileInstance) {
+        // Use file instance (this is what was set during reset)
+        instance = fileInstance;
+        console.log(`Using instance from file: ${instance}`);
       } else {
-        // No instance in Gun, publish from file or create new
-        const fileInstance = simpleReset.loadInstance();
-        const instance = fileInstance || `v${Date.now()}`;
-        console.log(`No instance in Gun, using: ${instance}`);
-        
-        gun.get('_whisperz_system').get('config').put({
-          instance: instance,
-          timestamp: Date.now(),
-          resetBy: 'server',
-          message: 'Initial instance setup'
-        });
-        
-        simpleReset.saveInstance(instance);
+        // No instance anywhere, create new
+        instance = `v${Date.now()}`;
+        console.log(`Creating new instance: ${instance}`);
       }
+      
+      // Save and publish the instance
+      simpleReset.saveInstance(instance);
+      
+      gun.get('_whisperz_system').get('config').put({
+        instance: instance,
+        timestamp: Date.now(),
+        resetBy: 'server',
+        message: 'Server started',
+        reset: false  // Clear any reset flag
+      });
+      
+      console.log(`Published instance to Gun: ${instance}`);
       
       // Republish every 30 seconds to ensure clients get it
       setInterval(() => {
