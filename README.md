@@ -1,16 +1,18 @@
 # Gun.js Relay Server
 
-## Version 3.3.0 - Production-Ready with Whisperz Integration
+## Version 3.4.0 - Enterprise-Ready Security & Monitoring
 
-A high-performance, secure relay server for Gun.js with admin controls, database management, and Whisperz chat integration.
+A high-performance, secure relay server for Gun.js with enterprise-grade security, audit logging, and Whisperz chat integration.
 
 ### ✨ Key Features
 - **🔄 Complete Reset System**: Clear server database and notify all connected Whisperz clients
-- **🔐 Secure Admin Panel**: Password-protected dashboard with modern UI
+- **🔐 Advanced Security**: IP whitelisting, audit logging, XSS protection, CSRF tokens
 - **📡 Instance Synchronization**: Automatic client detection of server resets
 - **🎯 Auto-Disappearing Notifications**: Beautiful toast notifications instead of alerts
 - **🌐 CORS Support**: Automatic support for Vercel and Render deployments
 - **📊 Rate Limiting**: Protection against abuse with configurable limits
+- **📝 Audit Logging**: Track all admin actions with detailed logs
+- **🛡️ IP Whitelisting**: Restrict admin access to specific IPs
 - **🔒 Security Hardened**: bcrypt passwords, session management, input validation
 - **Multiple Reset Methods**: Web UI, API endpoints, and CLI utility
 

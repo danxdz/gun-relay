@@ -181,6 +181,9 @@ let config = {
 };
 
 // ---------- UTILITIES ----------
+const auditLogs = [];
+const MAX_AUDIT_LOGS = 1000;
+
 function log(level, message, data = {}) {
   if (config.privacyMode) return;
   const entry = { timestamp: new Date().toISOString(), level, message, data };
@@ -193,6 +196,34 @@ function log(level, message, data = {}) {
       return v;
     }));
     console.log(`[${level}] ${message}`, safeData);
+  }
+}
+
+// Audit logging for admin actions
+function audit(action, req, details = {}) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    action,
+    ip: getDisplayIP(req.ip),
+    userAgent: req.headers['user-agent'],
+    sessionId: req.cookies?.admin_sid?.substring(0, 8) + '...',
+    ...details
+  };
+  
+  auditLogs.unshift(entry);
+  if (auditLogs.length > MAX_AUDIT_LOGS) auditLogs.shift();
+  
+  // Also log to main log
+  log('AUDIT', `${action} from ${entry.ip}`, details);
+  
+  // Persist audit logs in production
+  if (process.env.NODE_ENV === 'production' && process.env.AUDIT_LOG_FILE) {
+    fs.appendFile(process.env.AUDIT_LOG_FILE || 'audit.log', 
+      JSON.stringify(entry) + '\n', 
+      (err) => {
+        if (err) console.error('Failed to write audit log:', err);
+      }
+    );
   }
 }
 
@@ -230,6 +261,11 @@ function safeResolveDbPath(relName) {
 }
 
 // ---------- SESSIONS ----------
+// IP Whitelist for admin access (optional)
+const ADMIN_IP_WHITELIST = process.env.ADMIN_IP_WHITELIST 
+  ? process.env.ADMIN_IP_WHITELIST.split(',').map(ip => ip.trim())
+  : [];
+
 function generateSessionId() {
   return crypto.randomBytes(32).toString('hex');
 }
@@ -239,6 +275,17 @@ function createAdminSession(req) {
   return session;
 }
 function isAuthenticated(req) {
+  // Check IP whitelist if configured
+  if (ADMIN_IP_WHITELIST.length > 0) {
+    const clientIP = req.ip || req.connection.remoteAddress;
+    const allowed = ADMIN_IP_WHITELIST.some(allowedIP => {
+      return clientIP === allowedIP || clientIP.includes(allowedIP);
+    });
+    if (!allowed) {
+      return false;
+    }
+  }
+  
   const cookieSession = req.cookies?.admin_sid;
   const headerSession = req.headers['x-admin-session'] || req.query.session;
   const session = cookieSession || headerSession;
@@ -654,10 +701,10 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
     if (ok) {
       const session = createAdminSession(req);
       res.cookie('admin_sid', session, { httpOnly: true, secure: (process.env.FORCE_INSECURE !== 'true'), sameSite: 'strict', maxAge: SESSION_DURATION });
-      log('INFO', `Admin logged in from ${getDisplayIP(req.ip)}`);
+      audit('LOGIN_SUCCESS', req);
       return res.json({ success: true, session });
     } else {
-      log('WARN', `Failed admin login attempt from ${getDisplayIP(req.ip)}`);
+      audit('LOGIN_FAILED', req, { reason: 'Invalid password' });
       return res.status(401).json({ success: false, error: 'Invalid password' });
     }
   } catch (err) {
@@ -799,7 +846,7 @@ app.post("/admin/database/complete-reset", dangerousOpLimiter, async (req, res) 
     const result = await simpleReset.reset(instanceName);
     
     if (result.success) {
-      log("INFO", `Database reset successful. New instance: ${instanceName}`);
+      audit('DATABASE_RESET', req, { newInstance: instanceName, createSnapshot });
       
       // Clear the old Gun data and immediately set new instance
       // Using put(null) then immediately setting new data
@@ -810,8 +857,6 @@ app.post("/admin/database/complete-reset", dangerousOpLimiter, async (req, res) 
         message: 'Server reset - all clients should clear data',
         reset: true
       });
-      
-      log("INFO", `Published new instance to Gun: ${instanceName}`);
       
       res.json({ 
         success: true, 
@@ -904,6 +949,20 @@ app.delete("/admin/database/snapshot/:id", (req, res) => {
   // Placeholder for deletion
   log("INFO", `Delete snapshot requested: ${id}`);
   res.json({ success: true, message: "Delete feature coming soon" });
+});
+
+// Audit log endpoint
+app.get('/admin/audit', (req, res) => {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
+  
+  const limit = parseInt(req.query.limit) || 100;
+  const logs = auditLogs.slice(0, limit);
+  
+  res.json({
+    total: auditLogs.length,
+    limit,
+    logs
+  });
 });
 
 // Health endpoint (minimal, no internal metrics)
