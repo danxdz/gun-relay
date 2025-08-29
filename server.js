@@ -311,19 +311,22 @@ app.use(cors({
       return cb(null, true);
     }
     
-    // In production with no configured origins, allow same-origin and common patterns
-    if (allowedOrigins.length === 0) {
-      // Allow same-origin requests
-      if (origin.includes('gun-relay-nchb.onrender.com')) {
-        return cb(null, true);
-      }
-      // Log but don't crash - just reject the CORS request
-      console.warn(`CORS request from unconfigured origin: ${origin}`);
-      return cb(null, false);
-    }
-    
     // Check against allowed origins
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    const allowed = allowedOrigins.some(allowed => {
+      if (allowed === '*') return true;
+      if (allowed === origin) return true;
+      // Check if origin matches pattern (for subdomains)
+      if (origin && (
+        origin.includes('vercel.app') ||
+        origin.includes('onrender.com') ||
+        origin.includes('localhost')
+      )) {
+        return true;
+      }
+      return false;
+    });
+    
+    if (allowed) {
       return cb(null, true);
     }
     
@@ -885,22 +888,52 @@ const server = app.listen(PORT, () => {
     peers: []    // No default peers, this is the main relay
   });
   
-  // On server start, check if we have a stored instance in Gun
-  // If not, use the file instance or generate a new one
+  // On server start, always check Gun for the latest instance
+  // Gun data persists across restarts on Render
   setTimeout(() => {
     gun.get('_whisperz_system').get('config').once((data) => {
-      if (!data || !data.instance) {
-        // No instance in Gun, publish from file
-        console.log('No instance in Gun, publishing from file...');
-        publishInstanceToGun();
-      } else {
-        // Instance exists in Gun, update our file to match
+      if (data && data.instance) {
+        // Instance exists in Gun, this is our source of truth
         console.log(`Found instance in Gun: ${data.instance}`);
         simpleReset.saveInstance(data.instance);
+        
+        // Republish to ensure all clients get it
+        gun.get('_whisperz_system').get('config').put({
+          instance: data.instance,
+          timestamp: Date.now(),
+          resetBy: 'server',
+          message: 'Server restarted - instance confirmed'
+        });
+      } else {
+        // No instance in Gun, publish from file or create new
+        const fileInstance = simpleReset.loadInstance();
+        const instance = fileInstance || `v${Date.now()}`;
+        console.log(`No instance in Gun, using: ${instance}`);
+        
+        gun.get('_whisperz_system').get('config').put({
+          instance: instance,
+          timestamp: Date.now(),
+          resetBy: 'server',
+          message: 'Initial instance setup'
+        });
+        
+        simpleReset.saveInstance(instance);
       }
       
       // Republish every 30 seconds to ensure clients get it
-      setInterval(publishInstanceToGun, 30000);
+      setInterval(() => {
+        gun.get('_whisperz_system').get('config').once((data) => {
+          if (data && data.instance) {
+            console.log(`Publishing instance to Gun: ${data.instance}`);
+            gun.get('_whisperz_system').get('config').put({
+              instance: data.instance,
+              timestamp: Date.now(),
+              resetBy: 'server',
+              message: 'Periodic update'
+            });
+          }
+        });
+      }, 30000);
     });
   }, 2000);
 });
