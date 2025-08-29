@@ -363,6 +363,14 @@ function publishInstanceToGun() {
   }
 }
 
+// ---------- CSRF Token Generation ----------
+function generateCSRFToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Store CSRF tokens with sessions
+const csrfTokens = new Map();
+
 // ---------- ADMIN ENDPOINTS ----------
 
 // GET dashboard (SECURITY: require auth to view)
@@ -763,8 +771,15 @@ app.get("/admin/whisperz/instance", (req, res) => {
   }
 });
 
+// Rate limiter for dangerous operations
+const dangerousOpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3, // Max 3 resets per 15 minutes
+  message: 'Too many reset attempts, please try again later'
+});
+
 // Complete reset - server and clients
-app.post("/admin/database/complete-reset", async (req, res) => {
+app.post("/admin/database/complete-reset", dangerousOpLimiter, async (req, res) => {
   if (!isAuthenticated(req)) return res.status(401).json({ error: "Unauthorized" });
   
   const { newInstance, createSnapshot } = req.body;
@@ -912,7 +927,23 @@ app.get('/version', (req, res) => {
 
 // Start server with WebSocket support for Gun
 
-// TODO: Add graceful shutdown and signal handling for production
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, closing server gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
 const server = app.listen(PORT, () => {
   console.log(`Gun relay server listening on ${PORT}`);
   
